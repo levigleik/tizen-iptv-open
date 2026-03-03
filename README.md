@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# IPTV Open Tizen (Next.js + shadcn/ui)
 
-## Getting Started
+Front-end IPTV otimizado para Smart TV Samsung Tizen (3+) usando o endpoint agrupado do back-end:
 
-First, run the development server:
+- `GET /iptv/{mac}/grouped`
+
+O app já vem com:
+
+- Tema escuro por padrão
+- Interface em português (pt-BR)
+- Fluxo inicial de escolha: **Canais**, **Séries** ou **Filmes**
+- Miniaturas (`tvgLogo`) e badges de categorias (`groupTitle`, qualidade, legendado)
+- Mapeamento reutilizável de inputs do controle remoto (setas, enter, voltar)
+
+## Variáveis de ambiente
+
+Crie seu `.env.local` a partir de `.env.example`:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+cp .env.example .env.local
+```
+
+Valores esperados:
+
+- `NEXT_PUBLIC_IPTV_API_BASE_URL` (ex.: `http://localhost:4000`)
+- `NEXT_PUBLIC_IPTV_FALLBACK_MAC` (usado quando não há MAC detectável no navegador)
+
+## Execução
+
+```bash
+bun install
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## MAC Address no Tizen
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+No runtime Tizen, o app tenta obter automaticamente o MAC via `webapis.network.getMac()`.
 
-## Learn More
+Ordem de resolução do MAC:
 
-To learn more about Next.js, take a look at the following resources:
+1. Query string (`?mac=001122AABBCC`)
+2. API Tizen (`webapis.network.getMac()`)
+3. `localStorage`
+4. `NEXT_PUBLIC_IPTV_FALLBACK_MAC`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Navegação por controle remoto
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Mapeamento principal:
 
-## Deploy on Vercel
+- Esquerda/Direita: navega categorias ou itens
+- Enter: seleciona categoria ou item
+- Cima/Baixo: alterna foco entre área de categorias e conteúdo
+- Voltar (`Return`/`Escape`/`Backspace`): volta foco ou limpa seleção
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Implementação reutilizável:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Parser de teclas: `src/lib/tv-remote.ts`
+- Registro de teclas Tizen: `src/lib/tizen.ts`
+- Hook React de escuta: `src/hooks/use-tv-remote.ts`
+
+## Estrutura principal
+
+- Página principal: `src/app/page.tsx`
+- Seleção de categoria: `src/components/iptv/category-selector.tsx`
+- Grade de conteúdo com miniaturas: `src/components/iptv/content-rail.tsx`
+- Cliente API agrupada: `src/lib/iptv.ts`
+
+## Observações
+
+- Para CORS em ambiente de desenvolvimento, habilite no back-end NestJS.
+- Em TV real, garanta os privilégios de rede no `config.xml` do app Tizen.
