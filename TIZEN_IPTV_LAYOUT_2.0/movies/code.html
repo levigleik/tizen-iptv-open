@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Movies Catalog</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --background: 224 71.4% 4.1%;
+            --foreground: 210 20% 98%;
+            --card: 222.2 84% 4.9%;
+            --card-foreground: 210 20% 98%;
+            --popover: 224 71.4% 4.1%;
+            --popover-foreground: 210 20% 98%;
+            --primary: 262.1 83.3% 57.8%;
+            --primary-foreground: 210 20% 98%;
+            --secondary: 215 27.9% 16.9%;
+            --secondary-foreground: 210 20% 98%;
+            --muted: 215 27.9% 16.9%;
+            --muted-foreground: 217.9 10.6% 64.9%;
+            --accent: 215 27.9% 16.9%;
+            --accent-foreground: 210 20% 98%;
+            --destructive: 0 62.8% 30.6%;
+            --destructive-foreground: 210 20% 98%;
+            --border: 215 27.9% 16.9%;
+            --input: 215 27.9% 16.9%;
+            --ring: 262.1 83.3% 57.8%;
+            --radius: 0.5rem;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+        }
+        .movie-card {
+            transition: transform 0.2s ease-out;
+        }
+        .movie-card:hover, .movie-card:focus-within {
+            transform: scale(1.05);
+            z-index: 10;
+        }
+        .movie-poster-container {
+            position: relative;
+            padding-bottom: 150%;overflow: hidden;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+        }
+        .movie-poster {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .movie-card:hover .movie-poster-overlay,
+        .movie-card:focus-within .movie-poster-overlay {
+            opacity: 1;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        border: "hsl(var(--border))",
+                        input: "hsl(var(--input))",
+                        ring: "hsl(var(--ring))",
+                        background: "hsl(var(--background))",
+                        foreground: "hsl(var(--foreground))",
+                        primary: {
+                            DEFAULT: "hsl(var(--primary))",
+                            foreground: "hsl(var(--primary-foreground))",
+                        },
+                        secondary: {
+                            DEFAULT: "hsl(var(--secondary))",
+                            foreground: "hsl(var(--secondary-foreground))",
+                        },
+                        destructive: {
+                            DEFAULT: "hsl(var(--destructive))",
+                            foreground: "hsl(var(--destructive-foreground))",
+                        },
+                        muted: {
+                            DEFAULT: "hsl(var(--muted))",
+                            foreground: "hsl(var(--muted-foreground))",
+                        },
+                        accent: {
+                            DEFAULT: "hsl(var(--accent))",
+                            foreground: "hsl(var(--accent-foreground))",
+                        },
+                        popover: {
+                            DEFAULT: "hsl(var(--popover))",
+                            foreground: "hsl(var(--popover-foreground))",
+                        },
+                        card: {
+                            DEFAULT: "hsl(var(--card))",
+                            foreground: "hsl(var(--card-foreground))",
+                        },
+                    },
+                    borderRadius: {
+                        lg: "var(--radius)",
+                        md: "calc(var(--radius) - 2px)",
+                        sm: "calc(var(--radius) - 4px)",
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen antialiased selection:bg-primary selection:text-primary-foreground">
+<div class="flex h-screen overflow-hidden">
+<aside class="w-20 md:w-64 border-r border-border bg-card flex flex-col items-center md:items-start shrink-0 z-20 transition-all duration-300">
+<div class="h-16 flex items-center justify-center md:justify-start md:px-6 w-full shrink-0 border-b border-border/50">
+<span class="material-symbols-outlined text-primary text-3xl">live_tv</span>
+<span class="ml-3 font-bold text-xl tracking-tight hidden md:block">PlayTV</span>
+</div>
+<nav class="flex-1 w-full py-6 flex flex-col gap-2 px-3 overflow-y-auto hide-scrollbar">
+<a class="flex items-center gap-3 px-3 py-3 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-medium hidden md:block">Home</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" href="#">
+<span class="material-symbols-outlined">tv</span>
+<span class="font-medium hidden md:block">Live TV</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-md bg-primary text-primary-foreground shadow-sm transition-colors" href="#">
+<span class="material-symbols-outlined">movie</span>
+<span class="font-medium hidden md:block">Movies</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" href="#">
+<span class="material-symbols-outlined">smart_display</span>
+<span class="font-medium hidden md:block">Series</span>
+</a>
+<div class="my-4 border-t border-border/50 w-full hidden md:block"></div>
+<a class="flex items-center gap-3 px-3 py-3 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" href="#">
+<span class="material-symbols-outlined">favorite</span>
+<span class="font-medium hidden md:block">Favorites</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-medium hidden md:block">History</span>
+</a>
+</nav>
+<div class="p-4 w-full mt-auto border-t border-border/50">
+<a class="flex items-center gap-3 px-3 py-3 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors justify-center md:justify-start" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-medium hidden md:block">Settings</span>
+</a>
+</div>
+</aside>
+<main class="flex-1 flex flex-col h-full relative overflow-hidden bg-background">
+<header class="h-20 shrink-0 border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center justify-between px-6 z-10 sticky top-0">
+<div class="flex items-center gap-4 flex-1">
+<h1 class="text-2xl font-bold tracking-tight hidden lg:block mr-6">Movies</h1>
+<div class="relative w-full max-w-md group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full bg-secondary/50 border-transparent focus:border-primary focus:ring-1 focus:ring-primary rounded-full pl-10 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground transition-all" placeholder="Search movies..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="relative inline-block text-left">
+<button class="inline-flex items-center gap-2 justify-center w-full rounded-md border border-border bg-card px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background" type="button">
+<span class="material-symbols-outlined text-sm">category</span>
+                            All Categories
+                            <span class="material-symbols-outlined text-sm text-muted-foreground">expand_more</span>
+</button>
+</div>
+<div class="relative inline-block text-left">
+<button class="inline-flex items-center gap-2 justify-center w-full rounded-md border border-border bg-card px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background" type="button">
+<span class="material-symbols-outlined text-sm">sort</span>
+                            Sort by
+                            <span class="material-symbols-outlined text-sm text-muted-foreground">expand_more</span>
+</button>
+</div>
+</div>
+</header>
+<div class="flex-1 overflow-y-auto p-6 scroll-smooth">
+<div class="mb-6 flex items-center justify-between">
+<h2 class="text-xl font-semibold tracking-tight">Trending Now</h2>
+<span class="text-sm text-muted-foreground">Showing 1-24 of 1,245</span>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-x-4 gap-y-8">
+<a class="movie-card group flex flex-col gap-2 outline-none" href="#">
+<div class="movie-poster-container bg-muted">
+<img alt="Jurassic World: Domínio" class="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105" loading="lazy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAohoGVV0mFQ1WveMHjJIuWHz_jXh-93w_Pv1NGoanHa4d2awe2xLOWq4Di9LJuqCPJ4gaywzemWYYWg-Hw-HfJMLCxLhDoYYUMhZoxaJChY5ZNtKPwceu6zTO3WBI398jkW7mw7SealhF2oWz3OZSmS6jARnHpMshPSRYtpiXurU-6_iiTSLS5bejmLqzPJNGmbVl7dweRrZHaxsrqzrSerSJgC0yFx6CvfzMysZU5MhnS3e_XTu-YJZPzFQDg7tRmJp6UFrnVG56N"/>
+<div class="absolute top-2 right-2 flex flex-col gap-1 items-end">
+<span class="inline-flex items-center rounded-sm bg-black/80 px-1.5 py-0.5 text-[10px] font-bold text-white shadow backdrop-blur-sm border border-white/10 uppercase tracking-wider">4K</span>
+<span class="inline-flex items-center rounded-sm bg-blue-600/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow backdrop-blur-sm border border-white/10 uppercase tracking-wider">HDR</span>
+</div>
+<div class="absolute top-2 left-2">
+<span class="inline-flex items-center rounded-sm bg-yellow-500/90 px-1.5 py-0.5 text-[10px] font-bold text-black shadow backdrop-blur-sm uppercase tracking-wider">[L]</span>
+</div>
+<div class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center backdrop-blur-[2px]">
+<button class="rounded-full w-12 h-12 bg-primary/90 text-primary-foreground flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 group-focus:scale-100 transition-transform">
+<span class="material-symbols-outlined text-3xl ml-1">play_arrow</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col">
+<h3 class="font-medium text-sm leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors group-focus:text-primary">Jurassic World: Domínio</h3>
+<p class="text-xs text-muted-foreground truncate mt-0.5">Filmes | Lançamentos</p>
+</div>
+</a>
+<a class="movie-card group flex flex-col gap-2 outline-none" href="#">
+<div class="movie-poster-container bg-muted">
+<img alt="The Batman" class="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105" loading="lazy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAn16K4CxlNPM5J53UWI1_1ifb1fRs1ftyKao1BTXD2DnJAFDOtqdL5JjUDx9DVPkd_zPTtFXfVe9oez5HVb0MqrvNo3IT2TjVcyRMKM2hxdwx1HIe9F01dReJEGwrnR17iDsmpp9-YqCMQKR0YT5CM3SiIdJb_CogiO7mfwZGgXux50eZAXyA8SCoegjJpclTBAHhQC67_URclLXkhQZm5-m6pLn3lH1kInB7GW1m9Pq-_zOqLPvqKoxcce8EIMnD4wSl91ZW4ah4n"/>
+<div class="absolute top-2 right-2 flex flex-col gap-1 items-end">
+<span class="inline-flex items-center rounded-sm bg-black/80 px-1.5 py-0.5 text-[10px] font-bold text-white shadow backdrop-blur-sm border border-white/10 uppercase tracking-wider">4K</span>
+</div>
+<div class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center backdrop-blur-[2px]">
+<button class="rounded-full w-12 h-12 bg-primary/90 text-primary-foreground flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 group-focus:scale-100 transition-transform">
+<span class="material-symbols-outlined text-3xl ml-1">play_arrow</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col">
+<h3 class="font-medium text-sm leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors group-focus:text-primary">The Batman</h3>
+<p class="text-xs text-muted-foreground truncate mt-0.5">Filmes | Ação</p>
+</div>
+</a>
+<a class="movie-card group flex flex-col gap-2 outline-none" href="#">
+<div class="movie-poster-container bg-muted">
+<img alt="Dune" class="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105" loading="lazy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3LB_vT-B01tSNclI9t6I6Ilbn3sD6643Wnwb-fY2YrCkp0gDXy5jcATb2JWI80upUafuY1vzZaNszJyDJv05FpD_IhRI6pu7s0UpsOziNcsN-i1n8cFhmvAu8B7cXFvLjLzT6vOrsItab5fXOPo_9hV67XOFIMbYiK_8HYh8g2yNqjkNJzviDkJoLm5zAkG_eTdzB6PDzyIaimr0OH_4IWlJ48DIn716DbtPua86UXirjijRMqgt0w3EhoEBm1-sb9dMaYGhAnAs3"/>
+<div class="absolute top-2 right-2 flex flex-col gap-1 items-end">
+<span class="inline-flex items-center rounded-sm bg-black/80 px-1.5 py-0.5 text-[10px] font-bold text-white shadow backdrop-blur-sm border border-white/10 uppercase tracking-wider">FHD</span>
+</div>
+<div class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center backdrop-blur-[2px]">
+<button class="rounded-full w-12 h-12 bg-primary/90 text-primary-foreground flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 group-focus:scale-100 transition-transform">
+<span class="material-symbols-outlined text-3xl ml-1">play_arrow</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col">
+<h3 class="font-medium text-sm leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors group-focus:text-primary">Dune: Part One</h3>
+<p class="text-xs text-muted-foreground truncate mt-0.5">Filmes | Ficção Científica</p>
+</div>
+</a>
+<a class="movie-card group flex flex-col gap-2 outline-none" href="#">
+<div class="movie-poster-container bg-muted">
+<img alt="Interstellar" class="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105" loading="lazy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqEQxv2ApP12P-s0q0MvYk9ONjjIbc7kYW-zbq6z7_yev05VfQHaw1PTcxbXkbn3dWDnaUihL72e3tRV79bnD9jktV9i2R_5kz9Kgv34jSEW2pGHDW5QHcZ2MVG14YfCNkRna7E8LsjY3IcNJGQkxgM2JPA-J8d4wY6hh2Ht3g-aEl6ESoHDtI6F1cBGjyDCukISpVv71rghnC5GnT1ZcbBCiXcl-z3T-ZHJPTiqSPxoV4xdR09a6zp3mmTmvb1h5LwarOufir18kr"/>
+<div class="absolute top-2 right-2 flex flex-col gap-1 items-end">
+<span class="inline-flex items-center rounded-sm bg-black/80 px-1.5 py-0.5 text-[10px] font-bold text-white shadow backdrop-blur-sm border border-white/10 uppercase tracking-wider">4K</span>
+<span class="inline-flex items-center rounded-sm bg-blue-600/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow backdrop-blur-sm border border-white/10 uppercase tracking-wider">HDR</span>
+</div>
+<div class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center backdrop-blur-[2px]">
+<button class="rounded-full w-12 h-12 bg-primary/90 text-primary-foreground flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 group-focus:scale-100 transition-transform">
+<span class="material-symbols-outlined text-3xl ml-1">play_arrow</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col">
+<h3 class="font-medium text-sm leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors group-focus:text-primary">Interstellar</h3>
+<p class="text-xs text-muted-foreground truncate mt-0.5">Filmes | Ficção Científica</p>
+</div>
+</a>
+<a class="movie-card group flex flex-col gap-2 outline-none" href="#">
+<div class="movie-poster-container bg-muted">
+<img alt="Matrix" class="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105" loading="lazy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDK3_2AnsukDHhJ4hUQvOuM7bvpJxTlshPTQbfKuhnIoMXvYIzuRZy2YAqB4jxSSdLRp23f_38Yk0cdAsxxUxGdCHgMfNHOSyNeVjlWCHg0vEES5kNzzFctU69k31AYJdOai8v2--d6oQk49GZLWqCtWE6VvF7-UXG-UEr_iwT4pVCvDeTT0vwr3DrHnGPdTdp9NZBphXMg58XH20EfQwFoCtHxvJHwIEcTk4z6aEWgaiPjd8stSpGkJnDPB770OM4C4VvLxMnHAtGv"/>
+<div class="absolute top-2 right-2 flex flex-col gap-1 items-end">
+<span class="inline-flex items-center rounded-sm bg-black/80 px-1.5 py-0.5 text-[10px] font-bold text-white shadow backdrop-blur-sm border border-white/10 uppercase tracking-wider">HD</span>
+</div>
+<div class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center backdrop-blur-[2px]">
+<button class="rounded-full w-12 h-12 bg-primary/90 text-primary-foreground flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 group-focus:scale-100 transition-transform">
+<span class="material-symbols-outlined text-3xl ml-1">play_arrow</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col">
+<h3 class="font-medium text-sm leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors group-focus:text-primary">The Matrix Resurrections</h3>
+<p class="text-xs text-muted-foreground truncate mt-0.5">Filmes | Ação</p>
+</div>
+</a>
+<a class="movie-card group flex flex-col gap-2 outline-none" href="#">
+<div class="movie-poster-container bg-muted">
+<img alt="Spider-Man" class="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105" loading="lazy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6tsEvdvRGbuXAKtsVDZbJ-V2WrA15rv7bCopcd52Jrw9IpWZALN_LaMJgqO7GPm7ezGlG8KltLGZNUpqdaQFF0dQNbNMfCzsCo6xkX_WlWn8cyyJ7bjtBDVdK4CiWuM8_x5U01ZhixwaPePdK3lFqCvXVNWQc8qmrC7_QFHdy4F9o-gHVLQfkgC8s-6Uq7JIA0OD4FkAA07b_Vdv2G01gDM5zTtP1mBCRfYhvtqqrRabJvoD8ynkR7yuqzejgRDYlTgT8cP7iRY-e"/>
+<div class="absolute top-2 right-2 flex flex-col gap-1 items-end">
+<span class="inline-flex items-center rounded-sm bg-black/80 px-1.5 py-0.5 text-[10px] font-bold text-white shadow backdrop-blur-sm border border-white/10 uppercase tracking-wider">4K</span>
+</div>
+<div class="absolute top-2 left-2">
+<span class="inline-flex items-center rounded-sm bg-yellow-500/90 px-1.5 py-0.5 text-[10px] font-bold text-black shadow backdrop-blur-sm uppercase tracking-wider">[L]</span>
+</div>
+<div class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center backdrop-blur-[2px]">
+<button class="rounded-full w-12 h-12 bg-primary/90 text-primary-foreground flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 group-focus:scale-100 transition-transform">
+<span class="material-symbols-outlined text-3xl ml-1">play_arrow</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col">
+<h3 class="font-medium text-sm leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors group-focus:text-primary">Spider-Man: No Way Home</h3>
+<p class="text-xs text-muted-foreground truncate mt-0.5">Filmes | Aventura</p>
+</div>
+</a>
+<a class="movie-card group flex flex-col gap-2 outline-none" href="#">
+<div class="movie-poster-container bg-muted">
+<img alt="Blade Runner" class="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105" loading="lazy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuADzNUTRdha0rtZZMkuvn-AFB6R18lHQ5QTiARO0fH8ARhShbNLgIxPZh0M5TTY-AoD8n7Zvk6QYFhU1R0oAFr2sTs6kCuRebTmQzic2uoFVie2eVmN0dbLIErznTUJcq9NtyjA87z4vMS2fTQV7eb7N8KsH3t5V1OPhzRN6zT9-95jMhY3xFFlQm3prSbmPVaO11s8AWJCelbh2cNQmxYpfQAOc-IetpfCzO9u-B5VFgtoxMihKwj_G2mNDXMfr03UADzlEe7R52bR"/>
+<div class="absolute top-2 right-2 flex flex-col gap-1 items-end">
+<span class="inline-flex items-center rounded-sm bg-black/80 px-1.5 py-0.5 text-[10px] font-bold text-white shadow backdrop-blur-sm border border-white/10 uppercase tracking-wider">FHD</span>
+</div>
+<div class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center backdrop-blur-[2px]">
+<button class="rounded-full w-12 h-12 bg-primary/90 text-primary-foreground flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 group-focus:scale-100 transition-transform">
+<span class="material-symbols-outlined text-3xl ml-1">play_arrow</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col">
+<h3 class="font-medium text-sm leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors group-focus:text-primary">Blade Runner 2049</h3>
+<p class="text-xs text-muted-foreground truncate mt-0.5">Filmes | Drama</p>
+</div>
+</a>
+<a class="movie-card group flex flex-col gap-2 outline-none" href="#">
+<div class="movie-poster-container bg-muted">
+<img alt="Film Reel" class="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105" loading="lazy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9J5_6l2-Vcao_MN-GbE5Dx96An_VrzgYrMp63h2kZWixhBIhFTafcw5Ckcb5dGDwddw4R4hswt0T2Gb5Gj_CnKBS3ROgHsEcSZSfw1acwtbzod5Zyabtyt7ANZ0Gp635m0ksljpo8PE2zv20TZnfoJE3pzmGqk279wNvzkNjO05gsxQFf9xiRGBNkxB_HN1n8ocNpFjihGPLs64adnclYy7NJEoT3MBTgEKifBeTZrk8JhXKB_MRAP9Hg93uz6Oh7QXoMYtQ-4zE3"/>
+<div class="absolute top-2 right-2 flex flex-col gap-1 items-end">
+<span class="inline-flex items-center rounded-sm bg-black/80 px-1.5 py-0.5 text-[10px] font-bold text-white shadow backdrop-blur-sm border border-white/10 uppercase tracking-wider">HD</span>
+</div>
+<div class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center backdrop-blur-[2px]">
+<button class="rounded-full w-12 h-12 bg-primary/90 text-primary-foreground flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 group-focus:scale-100 transition-transform">
+<span class="material-symbols-outlined text-3xl ml-1">play_arrow</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col">
+<h3 class="font-medium text-sm leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors group-focus:text-primary">Oppenheimer</h3>
+<p class="text-xs text-muted-foreground truncate mt-0.5">Filmes | Drama</p>
+</div>
+</a>
+</div>
+<div class="py-12 flex justify-center w-full">
+<button class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                        Load More
+                    </button>
+</div>
+</div>
+</main>
+</div>
+
+</body></html>
