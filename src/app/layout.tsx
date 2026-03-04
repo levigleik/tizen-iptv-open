@@ -1,14 +1,29 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 
 import { QueryProvider } from "@/components/providers/query-provider";
 import { TvRemoteNavigationProvider } from "@/components/providers/tv-remote-navigation-provider";
+import { Toaster } from "@/components/ui/sonner";
+import {
+	Montserrat,
+	Playfair_Display,
+	Source_Code_Pro,
+} from "next/font/google";
 
 import "./globals.css";
 
-const inter = Inter({
-	variable: "--font-inter",
+const fontSans = Montserrat({
 	subsets: ["latin"],
+	variable: "--font-sans",
+});
+
+const fontSerif = Playfair_Display({
+	subsets: ["latin"],
+	variable: "--font-serif",
+});
+
+const fontMono = Source_Code_Pro({
+	subsets: ["latin"],
+	variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
@@ -29,9 +44,14 @@ export default function RootLayout({
 					rel="stylesheet"
 				/>
 			</head>
-			<body className={`${inter.variable} antialiased`}>
+			<body
+				className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} antialiased`}
+			>
 				<QueryProvider>
-					<TvRemoteNavigationProvider>{children}</TvRemoteNavigationProvider>
+					<TvRemoteNavigationProvider>
+						{children}
+						<Toaster position="bottom-right" richColors />
+					</TvRemoteNavigationProvider>
 				</QueryProvider>
 			</body>
 		</html>

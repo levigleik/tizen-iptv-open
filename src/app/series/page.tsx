@@ -15,7 +15,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
-import { fetchGroupedCategoryList, fetchGroupedSeriesPage } from "@/lib/iptv";
+import {
+	fetchGroupedCategoryList,
+	fetchGroupedSeriesPage,
+	fetchRecents,
+} from "@/lib/iptv";
 import { useAppSettingsStore } from "@/lib/settings-store";
 import { resolveMacAddress } from "@/lib/tizen";
 import type { GroupedSeriesDto } from "@/types/iptv";
@@ -109,6 +113,12 @@ export default function SeriesPage() {
 		enabled: Boolean(mac),
 		queryFn: ({ signal }) =>
 			fetchGroupedCategoryList(mac, "series", adult, signal),
+	});
+
+	const { data: recentsData } = useQuery({
+		queryKey: ["series-recents", mac],
+		enabled: Boolean(mac),
+		queryFn: ({ signal }) => fetchRecents(mac, 50, signal),
 	});
 
 	const {
@@ -230,6 +240,16 @@ export default function SeriesPage() {
 							{seriesList.map((series) => {
 								const firstEpisode = series.seasons[0]?.episodes[0];
 								const totalEpisodes = countEpisodes(series);
+								const hasProgress = series.seasons.some((season) =>
+									season.episodes.some((episode) => {
+										const recent = recentsData?.find((item) => {
+											const recentEntryId = item.m3uEntryId ?? item.entryId;
+											return recentEntryId === episode.id;
+										});
+
+										return (recent?.progressSeconds ?? 0) > 0;
+									}),
+								);
 
 								return (
 									<Card
@@ -269,6 +289,17 @@ export default function SeriesPage() {
 													{totalEpisodes}E
 												</Badge>
 											</div>
+
+											{hasProgress ? (
+												<div className="absolute bottom-2 left-2">
+													<Badge
+														className="bg-green-600/90 text-white border-white/10 uppercase tracking-wider"
+														variant="outline"
+													>
+														Em andamento
+													</Badge>
+												</div>
+											) : null}
 
 											<div className="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center">
 												<div className="h-12 w-12 rounded-full bg-primary/90 p-0 shadow-lg flex items-center justify-center">

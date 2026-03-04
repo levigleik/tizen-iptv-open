@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { LayoutShell } from "@/components/iptv/layout-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
 	Select,
 	SelectContent,
@@ -16,7 +17,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchGroupedSeriesPage } from "@/lib/iptv";
+import { fetchGroupedSeriesPage, fetchRecents } from "@/lib/iptv";
 import { useAppSettingsStore } from "@/lib/settings-store";
 import type { GroupedSeriesEpisodeDto } from "@/types/iptv";
 
@@ -29,6 +30,19 @@ function resolveEpisodeCode(
 	}
 
 	return `E${fallbackIndex + 1}`;
+}
+
+function formatProgressLabel(seconds: number): string {
+	const safe = Math.max(0, Math.floor(seconds));
+	const hours = Math.floor(safe / 3600);
+	const minutes = Math.floor((safe % 3600) / 60);
+	const secs = safe % 60;
+
+	if (hours > 0) {
+		return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+	}
+
+	return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
 export default function SeriesDetailsPage() {
@@ -69,6 +83,12 @@ export default function SeriesDetailsPage() {
 				groupTitle || undefined,
 				signal,
 			),
+	});
+
+	const { data: recentsData } = useQuery({
+		queryKey: ["series-details-recents", mac],
+		enabled: Boolean(mac),
+		queryFn: ({ signal }) => fetchRecents(mac, 50, signal),
 	});
 
 	const series = useMemo(() => {
@@ -148,8 +168,29 @@ export default function SeriesDetailsPage() {
 			0,
 		) ?? 0;
 
-	const openWatch = (episode: GroupedSeriesEpisodeDto) => {
+	const progressByEpisodeId = useMemo(() => {
+		const map = new Map<number, number>();
+		for (const item of recentsData ?? []) {
+			const recentEntryId = item.m3uEntryId ?? item.entryId;
+			if (typeof recentEntryId !== "number") continue;
+
+			const progress = Math.max(0, Math.floor(item.progressSeconds ?? 0));
+			if (progress > 0) {
+				map.set(recentEntryId, progress);
+			}
+		}
+
+		return map;
+	}, [recentsData]);
+
+	const openWatch = (
+		episode: GroupedSeriesEpisodeDto,
+		options?: { startFromBeginning?: boolean },
+	) => {
 		const params = new URLSearchParams({
+			mac,
+			entryId: String(episode.id),
+			resume: options?.startFromBeginning ? "0" : "1",
 			title: episode.rawTitle,
 			streamUrl: episode.streamUrl,
 			groupTitle: episode.groupTitle,
@@ -353,41 +394,72 @@ export default function SeriesDetailsPage() {
 													<div className="flex flex-col gap-1">
 														{activeSeason.episodes.map((episode, index) => {
 															const code = resolveEpisodeCode(episode, index);
+															const progressSeconds =
+																progressByEpisodeId.get(episode.id) ?? 0;
+															const hasProgress = progressSeconds > 0;
 															return (
-																<Button
-																	className="episode-card w-full text-left rounded-lg min-h-10 h-full p-2 flex gap-4 group focus:outline-none focus:ring-2 focus:ring-primary hover:bg-accent/50"
+																<Card
+																	className="episode-card w-full rounded-lg border-border/50"
 																	key={episode.id}
-																	onClick={() => openWatch(episode)}
-																	type="button"
-																	variant="ghost"
 																>
-																	<div className="relative w-32 h-20 shrink-0 rounded-md overflow-hidden bg-muted">
-																		{episode.tvgLogo ? (
-																			<Image
-																				alt={episode.rawTitle}
-																				className="w-full h-full object-cover"
-																				fill
-																				sizes="128px"
-																				src={episode.tvgLogo}
-																			/>
-																		) : null}
-																		<div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-																			<span className="material-symbols-outlined text-2xl text-white">
-																				play_circle
-																			</span>
+																	<div className="p-2 flex gap-4">
+																		<div className="relative w-32 h-20 shrink-0 rounded-md overflow-hidden bg-muted">
+																			{episode.tvgLogo ? (
+																				<Image
+																					alt={episode.rawTitle}
+																					className="w-full h-full object-cover"
+																					fill
+																					sizes="128px"
+																					src={episode.tvgLogo}
+																				/>
+																			) : null}
+																		</div>
+																		<div className="flex flex-col flex-1 py-1 justify-center">
+																			<div className="flex items-center justify-between mb-1">
+																				<span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+																					{code}
+																				</span>
+																				{hasProgress ? (
+																					<Badge
+																						className="bg-green-600/90 text-white border-white/10 uppercase tracking-wider"
+																						variant="outline"
+																					>
+																						Retomar{" "}
+																						{formatProgressLabel(
+																							progressSeconds,
+																						)}
+																					</Badge>
+																				) : null}
+																			</div>
+																			<h3 className="font-medium text-sm text-foreground line-clamp-1 transition-colors">
+																				{episode.rawTitle}
+																			</h3>
+																			<div className="mt-2 flex flex-wrap gap-2">
+																				{hasProgress ? (
+																					<Button
+																						onClick={() => openWatch(episode)}
+																						type="button"
+																					>
+																						Retomar
+																					</Button>
+																				) : null}
+																				<Button
+																					onClick={() =>
+																						openWatch(episode, {
+																							startFromBeginning: true,
+																						})
+																					}
+																					type="button"
+																					variant={
+																						hasProgress ? "outline" : "default"
+																					}
+																				>
+																					Começar do início
+																				</Button>
+																			</div>
 																		</div>
 																	</div>
-																	<div className="flex flex-col flex-1 py-1 justify-center">
-																		<div className="flex items-center justify-between mb-1">
-																			<span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-																				{code}
-																			</span>
-																		</div>
-																		<h3 className="font-medium text-sm text-foreground line-clamp-1 group-hover:text-primary transition-colors">
-																			{episode.rawTitle}
-																		</h3>
-																	</div>
-																</Button>
+																</Card>
 															);
 														})}
 													</div>

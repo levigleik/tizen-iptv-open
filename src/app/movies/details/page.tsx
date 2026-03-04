@@ -10,12 +10,25 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchGroupedMoviesPage } from "@/lib/iptv";
+import { fetchGroupedMoviesPage, fetchRecents } from "@/lib/iptv";
 import { useAppSettingsStore } from "@/lib/settings-store";
 import type { GroupedEntryVariantDto } from "@/types/iptv";
 
 function unique(values: string[]): string[] {
 	return [...new Set(values.filter(Boolean))];
+}
+
+function formatProgressLabel(seconds: number): string {
+	const safe = Math.max(0, Math.floor(seconds));
+	const hours = Math.floor(safe / 3600);
+	const minutes = Math.floor((safe % 3600) / 60);
+	const secs = safe % 60;
+
+	if (hours > 0) {
+		return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+	}
+
+	return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
 export default function MovieDetailsPage() {
@@ -52,6 +65,12 @@ export default function MovieDetailsPage() {
 			),
 	});
 
+	const { data: recentsData } = useQuery({
+		queryKey: ["movie-details-recents", mac],
+		enabled: Boolean(mac),
+		queryFn: ({ signal }) => fetchRecents(mac, 50, signal),
+	});
+
 	const movie = useMemo(() => {
 		if (!data || !title) return null;
 		const normalized = title.trim().toLowerCase();
@@ -71,8 +90,29 @@ export default function MovieDetailsPage() {
 
 	const firstVariant = movie?.variants[0];
 
-	const openWatch = (variant: GroupedEntryVariantDto) => {
+	const progressByVariantId = useMemo(() => {
+		const map = new Map<number, number>();
+		for (const item of recentsData ?? []) {
+			const recentEntryId = item.m3uEntryId ?? item.entryId;
+			if (typeof recentEntryId !== "number") continue;
+
+			const progress = Math.max(0, Math.floor(item.progressSeconds ?? 0));
+			if (progress > 0) {
+				map.set(recentEntryId, progress);
+			}
+		}
+
+		return map;
+	}, [recentsData]);
+
+	const openWatch = (
+		variant: GroupedEntryVariantDto,
+		options?: { startFromBeginning?: boolean },
+	) => {
 		const params = new URLSearchParams({
+			mac,
+			entryId: String(variant.id),
+			resume: options?.startFromBeginning ? "0" : "1",
 			title: variant.rawTitle,
 			streamUrl: variant.streamUrl,
 			groupTitle: variant.groupTitle,
@@ -186,14 +226,12 @@ export default function MovieDetailsPage() {
 								<div className="space-y-3">
 									{movie.variants.map((variant) => {
 										const tags = unique(variant.qualityTags);
+										const progressSeconds =
+											progressByVariantId.get(variant.id) ?? 0;
+										const hasProgress = progressSeconds > 0;
 										return (
 											<Card className="border-border/50" key={variant.id}>
-												<Button
-													className="h-auto w-full justify-start rounded-xl p-4 text-left gap-4"
-													onClick={() => openWatch(variant)}
-													type="button"
-													variant="ghost"
-												>
+												<div className="rounded-xl p-4 text-left space-y-3">
 													<div className="flex items-center justify-between gap-6">
 														<div>
 															<p className="text-sm font-semibold leading-tight text-foreground">
@@ -202,6 +240,12 @@ export default function MovieDetailsPage() {
 															<p className="text-xs text-muted-foreground mt-1">
 																{variant.groupTitle}
 															</p>
+															{hasProgress ? (
+																<p className="text-xs text-green-600 mt-1 font-medium">
+																	Retomar de{" "}
+																	{formatProgressLabel(progressSeconds)}
+																</p>
+															) : null}
 														</div>
 													</div>
 													<div className="flex flex-wrap gap-2 items-center">
@@ -236,7 +280,26 @@ export default function MovieDetailsPage() {
 															</Badge>
 														) : null}
 													</div>
-												</Button>
+													<div className="flex flex-wrap gap-2">
+														{hasProgress ? (
+															<Button
+																onClick={() => openWatch(variant)}
+																type="button"
+															>
+																Retomar
+															</Button>
+														) : null}
+														<Button
+															onClick={() =>
+																openWatch(variant, { startFromBeginning: true })
+															}
+															type="button"
+															variant={hasProgress ? "outline" : "default"}
+														>
+															Começar do início
+														</Button>
+													</div>
+												</div>
 											</Card>
 										);
 									})}

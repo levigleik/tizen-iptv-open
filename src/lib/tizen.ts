@@ -1,4 +1,5 @@
 import { normalizeMac } from "@/lib/iptv";
+import { useAppSettingsStore } from "@/lib/settings-store";
 
 interface TizenTvInputDevice {
 	registerKey: (keyName: string) => void;
@@ -73,6 +74,13 @@ export function resolveMacAddress(): string {
 		return normalizeMac(process.env.NEXT_PUBLIC_IPTV_FALLBACK_MAC ?? "");
 	}
 
+	// 1. Manual MAC (Zustand store -> LocalStorage persist)
+	const manualMac = useAppSettingsStore.getState().manualMac;
+	if (manualMac && manualMac.trim().length >= 12) {
+		return normalizeMac(manualMac);
+	}
+
+	// 2. Query Parameter
 	const params = new URLSearchParams(window.location.search);
 	const queryMac = params.get("mac");
 	if (queryMac) {
@@ -81,17 +89,20 @@ export function resolveMacAddress(): string {
 		return normalized;
 	}
 
+	// 3. Tizen Native API
 	const tizenMac = getMacFromTizenApi();
 	if (tizenMac) {
 		window.localStorage.setItem(STORAGE_KEY, tizenMac);
 		return tizenMac;
 	}
 
+	// 4. Fallback for stored value
 	const storedMac = window.localStorage.getItem(STORAGE_KEY);
 	if (storedMac) {
 		return normalizeMac(storedMac);
 	}
 
+	// 5. Env fallback
 	const fallbackMac = normalizeMac(
 		process.env.NEXT_PUBLIC_IPTV_FALLBACK_MAC ?? "",
 	);

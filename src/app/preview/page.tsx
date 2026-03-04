@@ -133,6 +133,7 @@ function PreviewContent() {
 	});
 
 	const openWatch = (payload: {
+		entryId?: number;
 		title: string;
 		streamUrl: string;
 		groupTitle: string;
@@ -140,6 +141,9 @@ function PreviewContent() {
 		isLegendado: boolean;
 	}) => {
 		const params = new URLSearchParams({
+			...(typeof payload.entryId === "number"
+				? { entryId: String(payload.entryId) }
+				: {}),
 			title: payload.title,
 			streamUrl: payload.streamUrl,
 			groupTitle: payload.groupTitle,
@@ -158,6 +162,7 @@ function PreviewContent() {
 				: variant.streamUrl;
 
 		openWatch({
+			entryId: category === "channels" ? undefined : variant.id,
 			title: variant.rawTitle,
 			streamUrl,
 			groupTitle: variant.groupTitle,
@@ -168,6 +173,7 @@ function PreviewContent() {
 
 	const openEpisode = (episode: GroupedSeriesEpisodeDto) => {
 		openWatch({
+			entryId: episode.id,
 			title: episode.rawTitle,
 			streamUrl: episode.streamUrl,
 			groupTitle: episode.groupTitle,

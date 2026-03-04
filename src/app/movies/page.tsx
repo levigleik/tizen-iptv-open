@@ -15,7 +15,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
-import { fetchGroupedCategoryList, fetchGroupedMoviesPage } from "@/lib/iptv";
+import {
+	fetchGroupedCategoryList,
+	fetchGroupedMoviesPage,
+	fetchRecents,
+} from "@/lib/iptv";
 import { useAppSettingsStore } from "@/lib/settings-store";
 import { resolveMacAddress } from "@/lib/tizen";
 import type { GroupedMovieDto } from "@/types/iptv";
@@ -114,6 +118,12 @@ export default function MoviesPage() {
 		enabled: Boolean(mac),
 		queryFn: ({ signal }) =>
 			fetchGroupedCategoryList(mac, "movies", adult, signal),
+	});
+
+	const { data: recentsData } = useQuery({
+		queryKey: ["movie-recents", mac],
+		enabled: Boolean(mac),
+		queryFn: ({ signal }) => fetchRecents(mac, 50, signal),
 	});
 
 	const {
@@ -240,6 +250,14 @@ export default function MoviesPage() {
 								const hasLegendado = movie.variants.some(
 									(variant) => variant.isLegendado,
 								);
+								const hasProgress = movie.variants.some((variant) => {
+									const recent = recentsData?.find((item) => {
+										const recentEntryId = item.m3uEntryId ?? item.entryId;
+										return recentEntryId === variant.id;
+									});
+
+									return (recent?.progressSeconds ?? 0) > 0;
+								});
 
 								return (
 									<Card
@@ -276,6 +294,17 @@ export default function MoviesPage() {
 													</Badge>
 												))}
 											</div>
+
+											{hasProgress ? (
+												<div className="absolute bottom-2 left-2">
+													<Badge
+														className="bg-green-600/90 text-white border-white/10 uppercase tracking-wider"
+														variant="outline"
+													>
+														Em andamento
+													</Badge>
+												</div>
+											) : null}
 
 											{hasLegendado ? (
 												<div className="absolute top-2 left-2">
