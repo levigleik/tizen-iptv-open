@@ -15,6 +15,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { fetchGroupedSeriesPage } from "@/lib/iptv";
 import { useAppSettingsStore } from "@/lib/settings-store";
 import type { GroupedSeriesEpisodeDto } from "@/types/iptv";
@@ -196,9 +197,57 @@ export default function SeriesDetailsPage() {
 
 				<div className="flex-1 overflow-y-auto px-6 pb-6 pt-12 md:pt-24 z-10 relative scroll-smooth flex flex-col lg:flex-row gap-12">
 					{isPending ? (
-						<div className="text-sm text-muted-foreground">
-							Carregando detalhes...
-						</div>
+						<>
+							<div className="w-full lg:w-1/2 flex flex-col justify-start">
+								<div className="flex flex-wrap gap-2 mb-4">
+									<Skeleton className="h-6 w-20 rounded-full bg-white/20" />
+									<Skeleton className="h-6 w-28 rounded-full bg-white/20" />
+									<Skeleton className="h-6 w-28 rounded-full bg-white/20" />
+								</div>
+
+								<Skeleton className="h-12 w-4/5 mb-3 bg-white/20" />
+								<Skeleton className="h-12 w-3/5 mb-4 bg-white/20" />
+
+								<div className="flex items-center gap-4 mb-6">
+									<Skeleton className="h-4 w-40 bg-white/20" />
+									<Skeleton className="h-4 w-40 bg-white/20" />
+								</div>
+
+								<div className="space-y-2 mb-8 max-w-2xl">
+									<Skeleton className="h-6 w-full bg-white/20" />
+									<Skeleton className="h-6 w-11/12 bg-white/20" />
+								</div>
+
+								<Skeleton className="h-12 w-64 rounded-md" />
+							</div>
+
+							<div className="w-full lg:w-1/2 flex flex-col h-full max-h-[70vh]">
+								<div className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-xl flex flex-col h-full shadow-2xl overflow-hidden">
+									<div className="p-4 border-b border-border/50 flex items-center justify-between shrink-0 bg-background/50">
+										<Skeleton className="h-7 w-32" />
+										<Skeleton className="h-9 w-44" />
+									</div>
+
+									<div className="flex-1 overflow-y-auto p-2 hide-scrollbar">
+										<div className="space-y-2">
+											<Skeleton className="h-4 w-32 ml-2" />
+											{Array.from({ length: 6 }).map((_, index) => (
+												<div
+													className="w-full rounded-lg p-2 flex gap-4"
+													key={`series-skeleton-${index}`}
+												>
+													<Skeleton className="w-32 h-20 shrink-0 rounded-md" />
+													<div className="flex-1 py-1 space-y-2">
+														<Skeleton className="h-3 w-16" />
+														<Skeleton className="h-4 w-3/4" />
+													</div>
+												</div>
+											))}
+										</div>
+									</div>
+								</div>
+							</div>
+						</>
 					) : null}
 
 					{error instanceof Error ? (

@@ -29,6 +29,16 @@ export function useTvRemote({
 			const action = getRemoteAction(event);
 			if (!action) return;
 
+			if (
+				event.repeat &&
+				action !== "up" &&
+				action !== "down" &&
+				action !== "left" &&
+				action !== "right"
+			) {
+				return;
+			}
+
 			const handled = onAction(action, event);
 			if (preventDefault && handled !== false) {
 				event.preventDefault();

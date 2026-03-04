@@ -9,6 +9,7 @@ import { LayoutShell } from "@/components/iptv/layout-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { fetchGroupedMoviesPage } from "@/lib/iptv";
 import { useAppSettingsStore } from "@/lib/settings-store";
 import type { GroupedEntryVariantDto } from "@/types/iptv";
@@ -102,8 +103,43 @@ export default function MovieDetailsPage() {
 
 				<div className="flex-1 overflow-y-auto p-6 scroll-smooth">
 					{isPending ? (
-						<div className="text-sm text-muted-foreground">
-							Carregando detalhes...
+						<div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+							<section className="xl:col-span-1 space-y-4">
+								<Skeleton className="movie-poster-container" />
+								<Skeleton className="h-8 w-3/4" />
+								<Skeleton className="h-4 w-1/2" />
+							</section>
+
+							<section className="xl:col-span-2">
+								<div className="mb-4 flex items-center justify-between">
+									<Skeleton className="h-7 w-52" />
+									<Skeleton className="h-5 w-44" />
+								</div>
+
+								<div className="space-y-3">
+									{Array.from({ length: 5 }).map((_, index) => (
+										<Card
+											className="border-border/50 p-4"
+											key={`movie-skeleton-${index}`}
+										>
+											<div className="space-y-3">
+												<div className="flex items-center justify-between gap-4">
+													<div className="space-y-2">
+														<Skeleton className="h-4 w-56" />
+														<Skeleton className="h-3 w-40" />
+													</div>
+													<Skeleton className="h-6 w-6 rounded-full" />
+												</div>
+												<div className="flex gap-2">
+													<Skeleton className="h-5 w-12 rounded-full" />
+													<Skeleton className="h-5 w-16 rounded-full" />
+													<Skeleton className="h-5 w-10 rounded-full" />
+												</div>
+											</div>
+										</Card>
+									))}
+								</div>
+							</section>
 						</div>
 					) : null}
 
@@ -153,12 +189,12 @@ export default function MovieDetailsPage() {
 										return (
 											<Card className="border-border/50" key={variant.id}>
 												<Button
-													className="h-auto w-full justify-start rounded-xl p-4 text-left"
+													className="h-auto w-full justify-start rounded-xl p-4 text-left gap-4"
 													onClick={() => openWatch(variant)}
 													type="button"
 													variant="ghost"
 												>
-													<div className="flex items-start justify-between gap-4">
+													<div className="flex items-center justify-between gap-6">
 														<div>
 															<p className="text-sm font-semibold leading-tight text-foreground">
 																{variant.rawTitle}
@@ -167,11 +203,8 @@ export default function MovieDetailsPage() {
 																{variant.groupTitle}
 															</p>
 														</div>
-														<span className="material-symbols-outlined text-primary">
-															play_arrow
-														</span>
 													</div>
-													<div className="mt-3 flex flex-wrap gap-2">
+													<div className="flex flex-wrap gap-2 items-center">
 														{tags.length === 0 ? (
 															<Badge
 																className="bg-black/80 text-white border-white/10 uppercase tracking-wider"

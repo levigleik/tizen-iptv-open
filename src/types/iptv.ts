@@ -1,5 +1,17 @@
 export type CatalogCategory = "channels" | "series" | "movies";
 
+export interface GroupedChannelEpgItemDto {
+	channelId: string;
+	channelDisplayName: string;
+	channelIcon?: string | null;
+	title: string;
+	description?: string | null;
+	startAt: string;
+	stopAt: string;
+	startTimestamp: string;
+	stopTimestamp: string;
+}
+
 export interface GroupedEntryVariantDto {
 	id: number;
 	rawTitle: string;
@@ -8,6 +20,7 @@ export interface GroupedEntryVariantDto {
 	tvgLogo?: string | null;
 	qualityTags: string[];
 	isLegendado: boolean;
+	epg?: GroupedChannelEpgItemDto[];
 }
 
 export interface GroupedMovieDto {

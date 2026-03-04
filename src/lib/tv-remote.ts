@@ -3,6 +3,7 @@ export type TvRemoteAction =
 	| "down"
 	| "left"
 	| "right"
+	| "red"
 	| "select"
 	| "back"
 	| "playPause";
@@ -12,6 +13,7 @@ const KEY_BY_NAME: Record<string, TvRemoteAction> = {
 	ArrowDown: "down",
 	ArrowLeft: "left",
 	ArrowRight: "right",
+	ColorF0Red: "red",
 	Enter: "select",
 	" ": "select",
 	NumpadEnter: "select",
@@ -26,6 +28,7 @@ const KEY_BY_CODE: Record<number, TvRemoteAction> = {
 	38: "up",
 	39: "right",
 	40: "down",
+	403: "red",
 	13: "select",
 	10009: "back",
 	461: "back",

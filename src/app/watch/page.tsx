@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,9 @@ function WatchContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const videoRef = useRef<HTMLVideoElement | null>(null);
+	const initializedUrlRef = useRef<string | null>(null);
+	const retryCountRef = useRef(0);
+	const [playbackError, setPlaybackError] = useState<string | null>(null);
 
 	const title = searchParams.get("title") ?? "";
 	const streamUrl = searchParams.get("streamUrl") ?? "";
@@ -34,6 +37,54 @@ function WatchContent() {
 				.filter(Boolean),
 		[quality],
 	);
+
+	useEffect(() => {
+		const video = videoRef.current;
+		if (!video || !streamUrl) return;
+		if (initializedUrlRef.current === streamUrl) return;
+
+		initializedUrlRef.current = streamUrl;
+		retryCountRef.current = 0;
+		setPlaybackError(null);
+
+		video.pause();
+		video.removeAttribute("src");
+		video.src = streamUrl;
+		video.load();
+
+		const tryPlay = () => {
+			void video.play().catch(() => {});
+		};
+
+		const retrySource = () => {
+			if (retryCountRef.current >= 2) {
+				setPlaybackError("Falha ao reproduzir a transmissão ao vivo.");
+				return;
+			}
+
+			retryCountRef.current += 1;
+			video.pause();
+			video.removeAttribute("src");
+			video.src = streamUrl;
+			video.load();
+			tryPlay();
+		};
+
+		video.addEventListener("loadedmetadata", tryPlay);
+		video.addEventListener("canplay", tryPlay);
+		video.addEventListener("error", retrySource);
+		video.addEventListener("stalled", retrySource);
+		video.addEventListener("waiting", tryPlay);
+		tryPlay();
+
+		return () => {
+			video.removeEventListener("loadedmetadata", tryPlay);
+			video.removeEventListener("canplay", tryPlay);
+			video.removeEventListener("error", retrySource);
+			video.removeEventListener("stalled", retrySource);
+			video.removeEventListener("waiting", tryPlay);
+		};
+	}, [streamUrl]);
 
 	useTvRemote({
 		enabled: true,
@@ -84,12 +135,13 @@ function WatchContent() {
 						</Button>
 					</CardHeader>
 					<CardContent className="space-y-4">
+						{playbackError ? (
+							<div className="text-sm text-destructive">{playbackError}</div>
+						) : null}
 						<video
 							ref={videoRef}
-							src={streamUrl}
 							className="aspect-video w-full rounded-lg bg-black"
 							controls
-							autoPlay
 							playsInline
 							preload="metadata"
 						/>

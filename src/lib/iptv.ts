@@ -58,6 +58,63 @@ function buildGroupedCategoryListUrl(
 	return `${getApiBaseUrl()}/iptv/${cleanMac}/grouped/${category}/category?${params.toString()}`;
 }
 
+function toAbsoluteApiUrl(url: string): string {
+	if (/^https?:\/\//i.test(url)) {
+		return url;
+	}
+
+	const base = getApiBaseUrl().replace(/\/$/, "");
+	const path = url.startsWith("/") ? url : `/${url}`;
+	return `${base}${path}`;
+}
+
+interface StartChannelWatchResponse {
+	playlistUrl: string;
+}
+
+function wait(ms: number): Promise<void> {
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
+}
+
+async function waitForPlaylistReady(
+	playlistUrl: string,
+	signal?: AbortSignal,
+): Promise<void> {
+	const attempts = 6;
+	let delay = 250;
+
+	for (let attempt = 0; attempt < attempts; attempt += 1) {
+		if (signal?.aborted) {
+			throw new DOMException("Operação cancelada", "AbortError");
+		}
+
+		const response = await fetch(playlistUrl, {
+			method: "GET",
+			headers: {
+				Accept: "application/vnd.apple.mpegurl,text/plain,*/*",
+			},
+			cache: "no-store",
+			signal,
+		});
+
+		if (response.ok) {
+			const manifest = await response.text();
+			if (manifest.includes("#EXTM3U") && manifest.includes("#EXTINF:")) {
+				return;
+			}
+		}
+
+		if (attempt < attempts - 1) {
+			await wait(delay);
+			delay *= 2;
+		}
+	}
+
+	throw new Error("Transmissão ainda não ficou pronta. Tente novamente.");
+}
+
 export async function fetchGroupedCategoryPage(
 	mac: string,
 	category: CatalogCategory,
@@ -235,4 +292,38 @@ export async function fetchGroupedCategoryList(
 	}
 
 	return (await response.json()) as GroupedCategoryListDto;
+}
+
+export async function startChannelWatchSession(
+	mac: string,
+	entryId: number,
+	signal?: AbortSignal,
+): Promise<string> {
+	const cleanMac = normalizeMac(mac);
+	const response = await fetch(
+		`${getApiBaseUrl()}/iptv/${cleanMac}/channels/${entryId}/watch`,
+		{
+			method: "POST",
+			headers: {
+				Accept: "application/json",
+			},
+			signal,
+			cache: "no-store",
+		},
+	);
+
+	if (!response.ok) {
+		throw new Error(
+			`Falha ao iniciar canal ao vivo (${response.status} ${response.statusText})`,
+		);
+	}
+
+	const payload = (await response.json()) as StartChannelWatchResponse;
+	if (!payload?.playlistUrl) {
+		throw new Error("Backend não retornou playlist HLS para o canal.");
+	}
+
+	const playlistUrl = toAbsoluteApiUrl(payload.playlistUrl);
+	await waitForPlaylistReady(playlistUrl, signal);
+	return playlistUrl;
 }

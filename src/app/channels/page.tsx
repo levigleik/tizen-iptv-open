@@ -5,22 +5,14 @@ import {
 	useIsFetching,
 	useQuery,
 } from "@tanstack/react-query";
-import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-
+import { CatalogImage } from "@/components/iptv/catalog-image";
+import { CatalogNavbar } from "@/components/iptv/catalog-navbar";
 import { LayoutShell } from "@/components/iptv/layout-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { fetchGroupedCategoryList, fetchGroupedChannelsPage } from "@/lib/iptv";
@@ -29,6 +21,7 @@ import { resolveMacAddress } from "@/lib/tizen";
 import type { GroupedChannelDto } from "@/types/iptv";
 
 type SortMode = "default" | "title-asc" | "title-desc";
+const ITEMS_PER_PAGE = 24;
 
 function unique(values: string[]): string[] {
 	return [...new Set(values.filter(Boolean))];
@@ -65,13 +58,24 @@ export default function ChannelsPage() {
 			queryKey: ["channels-grouped", mac],
 		}) > 0;
 
-	const { isOptimisticLoading, search, searchInput, setSearchInput } =
-		useDebouncedSearch({
-			initialValue: initialSearch,
-			delayMs: 1300,
-			minChars: 3,
-			isFetching: isSearchFetching,
-		});
+	const {
+		isOptimisticLoading,
+		search,
+		searchInput,
+		setSearchImmediate,
+		setSearchInput,
+	} = useDebouncedSearch({
+		initialValue: initialSearch,
+		delayMs: 1300,
+		minChars: 3,
+		isFetching: isSearchFetching,
+	});
+
+	const clearFilters = () => {
+		setSearchImmediate("");
+		setSelectedGroupTitle("");
+		setSortMode("default");
+	};
 
 	useEffect(() => {
 		setMac(resolveMacAddress());
@@ -130,7 +134,7 @@ export default function ChannelsPage() {
 			fetchGroupedChannelsPage(
 				mac,
 				pageParam,
-				24,
+				ITEMS_PER_PAGE,
 				adult,
 				search,
 				selectedGroupTitle,
@@ -181,59 +185,23 @@ export default function ChannelsPage() {
 	return (
 		<LayoutShell activeSidebarItem="live-tv">
 			<main className="flex-1 flex flex-col h-full relative overflow-hidden bg-background">
-				<header className="h-20 shrink-0 border-b border-border/50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 flex items-center justify-between px-6 z-10 sticky top-0">
-					<div className="flex items-center gap-4 flex-1">
-						<h1 className="text-2xl font-bold tracking-tight hidden lg:block mr-6">
-							Canais
-						</h1>
-						<div className="relative w-full max-w-md group">
-							<span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
-								search
-							</span>
-							<Input
-								className="w-full rounded-full bg-secondary/50 pl-10"
-								onChange={(event) => setSearchInput(event.target.value)}
-								placeholder="Procurar canais..."
-								type="text"
-								value={searchInput}
-							/>
-						</div>
-					</div>
-					<div className="flex items-center gap-3">
-						<Select
-							onValueChange={(value) => {
-								setSelectedGroupTitle(value === "__all" ? "" : value);
-							}}
-							value={selectedGroupTitle || "__all"}
-						>
-							<SelectTrigger className="w-48 bg-card">
-								<SelectValue placeholder="Todas Categorias" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="__all">Todas Categorias</SelectItem>
-								{groups.map((group) => (
-									<SelectItem key={group} value={group}>
-										{group}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-
-						<Select
-							onValueChange={(value) => setSortMode(value as SortMode)}
-							value={sortMode}
-						>
-							<SelectTrigger className="w-44 bg-card">
-								<SelectValue placeholder="Ordernar por" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="default">Ordernar por</SelectItem>
-								<SelectItem value="title-asc">Nome (A-Z)</SelectItem>
-								<SelectItem value="title-desc">Nome (Z-A)</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
-				</header>
+				<CatalogNavbar
+					title="Canais"
+					searchPlaceholder="Procurar canais..."
+					searchValue={searchInput}
+					onSearchChange={setSearchInput}
+					onClearFilters={clearFilters}
+					groups={groups}
+					selectedGroupTitle={selectedGroupTitle}
+					onGroupTitleChange={setSelectedGroupTitle}
+					sortValue={sortMode}
+					onSortValueChange={(value) => setSortMode(value as SortMode)}
+					sortOptions={[
+						{ label: "Ordernar por", value: "default" },
+						{ label: "Nome (A-Z)", value: "title-asc" },
+						{ label: "Nome (Z-A)", value: "title-desc" },
+					]}
+				/>
 
 				<div className="flex-1 flex overflow-hidden">
 					<div className="w-56 border-r border-border/50 bg-background/50 overflow-y-auto hidden md:block py-6 px-4 shrink-0 hide-scrollbar">
@@ -310,6 +278,9 @@ export default function ChannelsPage() {
 									const hasLegendado = channel.variants.some(
 										(variant) => variant.isLegendado,
 									);
+									const hasEpg = channel.variants.some(
+										(variant) => (variant.epg?.length ?? 0) > 0,
+									);
 
 									return (
 										<Card
@@ -327,15 +298,13 @@ export default function ChannelsPage() {
 										>
 											<div className="flex items-center gap-4 mb-auto min-w-0">
 												<div className="relative w-14 h-14 rounded-lg overflow-hidden bg-secondary shrink-0 border border-border/50">
-													{firstVariant?.tvgLogo ? (
-														<Image
-															alt={channel.title}
-															className="w-full h-full object-cover"
-															fill
-															sizes="56px"
-															src={firstVariant.tvgLogo}
-														/>
-													) : null}
+													<CatalogImage
+														alt={channel.title}
+														className="w-full h-full object-cover"
+														fill
+														sizes="56px"
+														src={firstVariant?.tvgLogo}
+													/>
 												</div>
 												<div className="flex-1 min-w-0">
 													<h4 className="font-bold text-sm truncate text-foreground group-focus:text-primary group-hover:text-primary transition-colors">
@@ -365,10 +334,39 @@ export default function ChannelsPage() {
 														[L]
 													</Badge>
 												) : null}
+												{hasEpg ? (
+													<Badge
+														className="bg-primary/20 text-primary border-primary/30 uppercase tracking-wider"
+														variant="outline"
+													>
+														EPG
+													</Badge>
+												) : null}
 											</div>
 										</Card>
 									);
 								})}
+								{isFetchingNextPage
+									? Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
+											<Card
+												className="relative flex h-36 flex-col border border-border/50 p-4"
+												key={`channels-next-skeleton-${index}`}
+											>
+												<div className="mb-auto flex min-w-0 items-center gap-4">
+													<Skeleton className="h-14 w-14 shrink-0 rounded-lg" />
+													<div className="flex-1 space-y-2">
+														<Skeleton className="h-4 w-3/4" />
+														<Skeleton className="h-3 w-1/2" />
+													</div>
+												</div>
+												<div className="mt-3 flex items-center gap-1.5">
+													<Skeleton className="h-5 w-10 rounded-full" />
+													<Skeleton className="h-5 w-10 rounded-full" />
+													<Skeleton className="h-5 w-8 rounded-full" />
+												</div>
+											</Card>
+										))
+									: null}
 							</div>
 						)}
 

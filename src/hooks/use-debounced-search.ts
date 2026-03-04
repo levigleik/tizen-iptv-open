@@ -29,6 +29,11 @@ export function useDebouncedSearch({
 	const isOptimisticLoading =
 		searchInput.trim().length >= minChars && normalizedInput !== search;
 
+	const setSearchImmediate = (value: string) => {
+		setSearchInput(value);
+		setSearch(normalizeSearchTerm(value, minChars));
+	};
+
 	useEffect(() => {
 		const inputAtSchedule = searchInput;
 		let timeoutId: number | null = null;
@@ -57,6 +62,7 @@ export function useDebouncedSearch({
 		isOptimisticLoading,
 		search,
 		searchInput,
+		setSearchImmediate,
 		setSearchInput,
 	};
 }

@@ -5,22 +5,14 @@ import {
 	useIsFetching,
 	useQuery,
 } from "@tanstack/react-query";
-import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-
+import { CatalogImage } from "@/components/iptv/catalog-image";
+import { CatalogNavbar } from "@/components/iptv/catalog-navbar";
 import { LayoutShell } from "@/components/iptv/layout-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { fetchGroupedCategoryList, fetchGroupedMoviesPage } from "@/lib/iptv";
@@ -29,6 +21,7 @@ import { resolveMacAddress } from "@/lib/tizen";
 import type { GroupedMovieDto } from "@/types/iptv";
 
 type SortMode = "default" | "title-asc" | "title-desc";
+const ITEMS_PER_PAGE = 24;
 
 function unique(values: string[]): string[] {
 	return [...new Set(values.filter(Boolean))];
@@ -62,13 +55,24 @@ export default function MoviesPage() {
 		useIsFetching({
 			queryKey: ["movie-grouped", mac],
 		}) > 0;
-	const { isOptimisticLoading, search, searchInput, setSearchInput } =
-		useDebouncedSearch({
-			initialValue: initialSearch,
-			delayMs: 1300,
-			minChars: 3,
-			isFetching: isSearchFetching,
-		});
+	const {
+		isOptimisticLoading,
+		search,
+		searchInput,
+		setSearchImmediate,
+		setSearchInput,
+	} = useDebouncedSearch({
+		initialValue: initialSearch,
+		delayMs: 1300,
+		minChars: 3,
+		isFetching: isSearchFetching,
+	});
+
+	const clearFilters = () => {
+		setSearchImmediate("");
+		setSelectedGroupTitle("");
+		setSortMode("default");
+	};
 
 	useEffect(() => {
 		setMac(resolveMacAddress());
@@ -127,7 +131,7 @@ export default function MoviesPage() {
 			fetchGroupedMoviesPage(
 				mac,
 				pageParam,
-				24,
+				ITEMS_PER_PAGE,
 				adult,
 				search,
 				selectedGroupTitle,
@@ -178,59 +182,23 @@ export default function MoviesPage() {
 	return (
 		<LayoutShell activeSidebarItem="movies">
 			<main className="flex-1 flex flex-col h-full relative overflow-hidden bg-background">
-				<header className="h-20 shrink-0 border-b border-border/50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 flex items-center justify-between px-6 z-10 sticky top-0">
-					<div className="flex items-center gap-4 flex-1">
-						<h1 className="text-2xl font-bold tracking-tight hidden lg:block mr-6">
-							Filmes
-						</h1>
-						<div className="relative w-full max-w-md group">
-							<span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
-								search
-							</span>
-							<Input
-								className="w-full rounded-full bg-secondary/50 pl-10"
-								onChange={(event) => setSearchInput(event.target.value)}
-								placeholder="Procurar filmes..."
-								type="text"
-								value={searchInput}
-							/>
-						</div>
-					</div>
-					<div className="flex items-center gap-3">
-						<Select
-							onValueChange={(value) => {
-								setSelectedGroupTitle(value === "__all" ? "" : value);
-							}}
-							value={selectedGroupTitle || "__all"}
-						>
-							<SelectTrigger className="w-48 bg-card">
-								<SelectValue placeholder="Todas Categorias" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="__all">Todas Categorias</SelectItem>
-								{groups.map((group) => (
-									<SelectItem key={group} value={group}>
-										{group}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-
-						<Select
-							onValueChange={(value) => setSortMode(value as SortMode)}
-							value={sortMode}
-						>
-							<SelectTrigger className="w-44 bg-card">
-								<SelectValue placeholder="Ordernar por" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="default">Ordernar por</SelectItem>
-								<SelectItem value="title-asc">Nome (A-Z)</SelectItem>
-								<SelectItem value="title-desc">Nome (Z-A)</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
-				</header>
+				<CatalogNavbar
+					title="Filmes"
+					searchPlaceholder="Procurar filmes..."
+					searchValue={searchInput}
+					onSearchChange={setSearchInput}
+					onClearFilters={clearFilters}
+					groups={groups}
+					selectedGroupTitle={selectedGroupTitle}
+					onGroupTitleChange={setSelectedGroupTitle}
+					sortValue={sortMode}
+					onSortValueChange={(value) => setSortMode(value as SortMode)}
+					sortOptions={[
+						{ label: "Ordernar por", value: "default" },
+						{ label: "Nome (A-Z)", value: "title-asc" },
+						{ label: "Nome (Z-A)", value: "title-desc" },
+					]}
+				/>
 
 				<div className="flex-1 overflow-y-auto p-6 scroll-smooth">
 					<div className="mb-6 flex items-center justify-between">
@@ -288,16 +256,14 @@ export default function MoviesPage() {
 										tabIndex={0}
 									>
 										<div className="movie-poster-container bg-muted">
-											{firstVariant?.tvgLogo ? (
-												<Image
-													alt={movie.title}
-													className="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105"
-													fill
-													loading="lazy"
-													sizes="(min-width: 1536px) 12.5vw, (min-width: 1280px) 16.66vw, (min-width: 1024px) 20vw, (min-width: 768px) 25vw, (min-width: 640px) 33.33vw, 50vw"
-													src={firstVariant.tvgLogo}
-												/>
-											) : null}
+											<CatalogImage
+												alt={movie.title}
+												className="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105"
+												fill
+												loading="lazy"
+												sizes="(min-width: 1536px) 12.5vw, (min-width: 1280px) 16.66vw, (min-width: 1024px) 20vw, (min-width: 768px) 25vw, (min-width: 640px) 33.33vw, 50vw"
+												src={firstVariant?.tvgLogo}
+											/>
 
 											<div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
 												{tags.map((badge) => (
@@ -322,7 +288,7 @@ export default function MoviesPage() {
 												</div>
 											) : null}
 
-											<div className="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center backdrop-blur-[2px]">
+											<div className="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center">
 												<div className="h-12 w-12 rounded-full bg-primary/90 p-0 shadow-lg flex items-center justify-center">
 													<span className="material-symbols-outlined text-3xl ml-1">
 														play_arrow
@@ -342,6 +308,20 @@ export default function MoviesPage() {
 									</Card>
 								);
 							})}
+							{isFetchingNextPage
+								? Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
+										<div
+											className="flex flex-col gap-2"
+											key={`movies-next-skeleton-${index}`}
+										>
+											<Skeleton className="aspect-2/3 w-full rounded-xl" />
+											<div className="space-y-2">
+												<Skeleton className="h-4 w-4/5" />
+												<Skeleton className="h-3 w-3/5" />
+											</div>
+										</div>
+									))
+								: null}
 						</div>
 					)}
 

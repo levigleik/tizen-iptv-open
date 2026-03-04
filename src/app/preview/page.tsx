@@ -1,13 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LoadingSpinner } from "@/components/ui/loading";
 import {
 	Card,
 	CardContent,
@@ -15,8 +14,9 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { LoadingSpinner } from "@/components/ui/loading";
 import { useTvRemote } from "@/hooks/use-tv-remote";
-import { fetchGroupedCategoryPage } from "@/lib/iptv";
+import { fetchGroupedCategoryPage, startChannelWatchSession } from "@/lib/iptv";
 import { useAppSettingsStore } from "@/lib/settings-store";
 import type {
 	CatalogCategory,
@@ -127,6 +127,11 @@ function PreviewContent() {
 		return firstEpisode?.tvgLogo ?? null;
 	}, [category, selectedEntity]);
 
+	const startWatchMutation = useMutation({
+		mutationFn: (variant: GroupedEntryVariantDto) =>
+			startChannelWatchSession(mac, variant.id),
+	});
+
 	const openWatch = (payload: {
 		title: string;
 		streamUrl: string;
@@ -143,13 +148,18 @@ function PreviewContent() {
 			from: `${from ? from : "/"}`,
 			fromPreview: `${window.location.pathname}${window.location.search}`,
 		});
-		+router.push(`/watch?${params.toString()}`);
+		router.push(`/watch?${params.toString()}`);
 	};
 
-	const openVariant = (variant: GroupedEntryVariantDto) => {
+	const openVariant = async (variant: GroupedEntryVariantDto) => {
+		const streamUrl =
+			category === "channels"
+				? await startWatchMutation.mutateAsync(variant)
+				: variant.streamUrl;
+
 		openWatch({
 			title: variant.rawTitle,
-			streamUrl: variant.streamUrl,
+			streamUrl,
 			groupTitle: variant.groupTitle,
 			qualityTags: variant.qualityTags,
 			isLegendado: variant.isLegendado,
@@ -271,16 +281,32 @@ function PreviewContent() {
 							<CardTitle>Qualidades do canal</CardTitle>
 						</CardHeader>
 						<CardContent className="flex flex-col gap-2">
-							{(selectedEntity as GroupedChannelDto).variants.map((variant) => (
-								<Button
-									key={variant.id}
-									variant="outline"
-									onClick={() => openVariant(variant)}
-									className="justify-start"
-								>
-									{variant.rawTitle}
-								</Button>
-							))}
+							{startWatchMutation.error instanceof Error ? (
+								<p className="text-sm text-destructive">
+									{startWatchMutation.error.message}
+								</p>
+							) : null}
+							{(selectedEntity as GroupedChannelDto).variants.map((variant) => {
+								const isStarting =
+									startWatchMutation.isPending &&
+									startWatchMutation.variables?.id === variant.id;
+
+								return (
+									<Button
+										key={variant.id}
+										variant="outline"
+										disabled={startWatchMutation.isPending}
+										onClick={() => {
+											void openVariant(variant);
+										}}
+										className="justify-start"
+									>
+										{isStarting
+											? `Iniciando transmissão... ${variant.rawTitle}`
+											: variant.rawTitle}
+									</Button>
+								);
+							})}
 						</CardContent>
 					</Card>
 				)}
