@@ -1,0 +1,359 @@
+"use client";
+
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import Image from "next/image";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+
+import { LayoutShell } from "@/components/iptv/layout-shell";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { LoadingSpinner } from "@/components/ui/loading";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { fetchGroupedCategoryList, fetchGroupedMoviesPage } from "@/lib/iptv";
+import { useAppSettingsStore } from "@/lib/settings-store";
+import { resolveMacAddress } from "@/lib/tizen";
+import type { GroupedMovieDto } from "@/types/iptv";
+
+type SortMode = "default" | "title-asc" | "title-desc";
+
+function unique(values: string[]): string[] {
+	return [...new Set(values.filter(Boolean))];
+}
+
+function badgeClass(badge: string) {
+	if (badge === "HDR") {
+		return "bg-blue-600/90 text-white border-white/10 uppercase tracking-wider";
+	}
+
+	return "bg-black/80 text-white border-white/10 uppercase tracking-wider";
+}
+
+export default function MoviesPage() {
+	const router = useRouter();
+	const pathname = usePathname();
+	const searchParams = useSearchParams();
+	const initialSearch = searchParams.get("search") ?? "";
+	const initialGroupTitle = searchParams.get("groupTitle") ?? "";
+	const initialSort = (searchParams.get("sort") as SortMode) ?? "default";
+	const [mac, setMac] = useState("");
+	const [searchInput, setSearchInput] = useState(initialSearch);
+	const [search, setSearch] = useState(initialSearch);
+	const [selectedGroupTitle, setSelectedGroupTitle] =
+		useState(initialGroupTitle);
+	const [sortMode, setSortMode] = useState<SortMode>(
+		["default", "title-asc", "title-desc"].includes(initialSort)
+			? initialSort
+			: "default",
+	);
+	const adult = useAppSettingsStore((state) => state.adult);
+
+	useEffect(() => {
+		setMac(resolveMacAddress());
+	}, []);
+
+	useEffect(() => {
+		const params = new URLSearchParams(searchParams.toString());
+
+		if (search) {
+			params.set("search", search);
+		} else {
+			params.delete("search");
+		}
+
+		if (selectedGroupTitle) {
+			params.set("groupTitle", selectedGroupTitle);
+		} else {
+			params.delete("groupTitle");
+		}
+
+		if (sortMode && sortMode !== "default") {
+			params.set("sort", sortMode);
+		} else {
+			params.delete("sort");
+		}
+
+		const current = searchParams.toString();
+		const next = params.toString();
+
+		if (current !== next) {
+			router.replace(next ? `${pathname}?${next}` : pathname, {
+				scroll: false,
+			});
+		}
+	}, [pathname, router, search, searchParams, selectedGroupTitle, sortMode]);
+
+	const { data: groupsResponse } = useQuery<{ data: string[] }>({
+		queryKey: ["movie-group-list", mac, adult],
+		enabled: Boolean(mac),
+		queryFn: ({ signal }) =>
+			fetchGroupedCategoryList(mac, "movies", adult, signal),
+	});
+
+	const {
+		data,
+		error,
+		isPending,
+		isFetchingNextPage,
+		hasNextPage,
+		fetchNextPage,
+	} = useInfiniteQuery({
+		queryKey: ["movie-grouped", mac, search, selectedGroupTitle, adult],
+		enabled: Boolean(mac),
+		initialPageParam: 1,
+		queryFn: ({ pageParam, signal }) =>
+			fetchGroupedMoviesPage(
+				mac,
+				pageParam,
+				24,
+				adult,
+				search,
+				selectedGroupTitle,
+				signal,
+			),
+		getNextPageParam: (lastPage) =>
+			lastPage.pageInfo.hasNextPage
+				? lastPage.pageInfo.currentPage + 1
+				: undefined,
+	});
+
+	const groups = groupsResponse?.data ?? [];
+	const movies = useMemo(() => {
+		const merged = data?.pages.flatMap((page) => page.data) ?? [];
+
+		if (sortMode === "title-asc") {
+			return [...merged].sort((a, b) =>
+				a.title.localeCompare(b.title, "pt-BR"),
+			);
+		}
+
+		if (sortMode === "title-desc") {
+			return [...merged].sort((a, b) =>
+				b.title.localeCompare(a.title, "pt-BR"),
+			);
+		}
+
+		return merged;
+	}, [data, sortMode]);
+
+	const pageInfo = data?.pages[data.pages.length - 1]?.pageInfo;
+
+	const openMovieDetails = (movie: GroupedMovieDto) => {
+		if (!mac) return;
+
+		const params = new URLSearchParams({
+			mac,
+			title: movie.title,
+			search,
+			groupTitle: selectedGroupTitle,
+			sort: sortMode,
+		});
+
+		router.push(`/movies/details?${params.toString()}`);
+	};
+
+	const applySearch = () => {
+		setSearch(searchInput.trim());
+	};
+
+	return (
+		<LayoutShell activeSidebarItem="movies">
+			<main className="flex-1 flex flex-col h-full relative overflow-hidden bg-background">
+				<header className="h-20 shrink-0 border-b border-border/50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 flex items-center justify-between px-6 z-10 sticky top-0">
+					<div className="flex items-center gap-4 flex-1">
+						<h1 className="text-2xl font-bold tracking-tight hidden lg:block mr-6">
+							Filmes
+						</h1>
+						<div className="relative w-full max-w-md group">
+							<span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
+								search
+							</span>
+							<Input
+								className="w-full rounded-full bg-secondary/50 pl-10"
+								onChange={(event) => setSearchInput(event.target.value)}
+								onKeyDown={(event) => {
+									if (event.key === "Enter") applySearch();
+								}}
+								placeholder="Procurar filmes..."
+								type="text"
+								value={searchInput}
+							/>
+						</div>
+					</div>
+					<div className="flex items-center gap-3">
+						<Select
+							onValueChange={(value) => {
+								setSelectedGroupTitle(value === "__all" ? "" : value);
+							}}
+							value={selectedGroupTitle || "__all"}
+						>
+							<SelectTrigger className="w-48 bg-card">
+								<SelectValue placeholder="Todas Categorias" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="__all">Todas Categorias</SelectItem>
+								{groups.map((group) => (
+									<SelectItem key={group} value={group}>
+										{group}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+
+						<Select
+							onValueChange={(value) => setSortMode(value as SortMode)}
+							value={sortMode}
+						>
+							<SelectTrigger className="w-44 bg-card">
+								<SelectValue placeholder="Ordernar por" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="default">Ordernar por</SelectItem>
+								<SelectItem value="title-asc">Nome (A-Z)</SelectItem>
+								<SelectItem value="title-desc">Nome (Z-A)</SelectItem>
+							</SelectContent>
+						</Select>
+
+						<Button variant="outline" onClick={applySearch} type="button">
+							Apply
+						</Button>
+					</div>
+				</header>
+
+				<div className="flex-1 overflow-y-auto p-6 scroll-smooth">
+					<div className="mb-6 flex items-center justify-between">
+						{/* <h2 className="text-xl font-semibold tracking-tight">
+							Trending Now
+						</h2> */}
+						<span className="text-sm text-muted-foreground">
+							{movies.length} itens carregados
+							{pageInfo ? ` · página ${pageInfo.currentPage}` : ""}
+						</span>
+					</div>
+
+					{isPending ? (
+						<div className="flex items-center gap-3 text-sm text-muted-foreground">
+							<LoadingSpinner size="sm" />
+							Carregando filmes...
+						</div>
+					) : null}
+
+					{error instanceof Error ? (
+						<div className="text-sm text-destructive">{error.message}</div>
+					) : null}
+
+					<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-x-4 gap-y-8">
+						{movies.map((movie) => {
+							const firstVariant = movie.variants[0];
+							const tags = unique(
+								movie.variants.flatMap((variant) => variant.qualityTags),
+							);
+							const hasLegendado = movie.variants.some(
+								(variant) => variant.isLegendado,
+							);
+
+							return (
+								<Card
+									className="movie-card cursor-pointer group flex flex-col gap-2 outline-none border-none bg-transparent shadow-none"
+									key={movie.title}
+									onClick={() => openMovieDetails(movie)}
+									onKeyDown={(event) => {
+										if (event.key === "Enter" || event.key === " ") {
+											event.preventDefault();
+											openMovieDetails(movie);
+										}
+									}}
+									role="button"
+									tabIndex={0}
+								>
+									<div className="movie-poster-container bg-muted">
+										{firstVariant?.tvgLogo ? (
+											<Image
+												alt={movie.title}
+												className="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105"
+												fill
+												loading="lazy"
+												sizes="(min-width: 1536px) 12.5vw, (min-width: 1280px) 16.66vw, (min-width: 1024px) 20vw, (min-width: 768px) 25vw, (min-width: 640px) 33.33vw, 50vw"
+												src={firstVariant.tvgLogo}
+											/>
+										) : null}
+
+										<div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+											{tags.map((badge) => (
+												<Badge
+													className={badgeClass(badge)}
+													key={`${movie.title}-${badge}`}
+													variant="outline"
+												>
+													{badge}
+												</Badge>
+											))}
+										</div>
+
+										{hasLegendado ? (
+											<div className="absolute top-2 left-2">
+												<Badge
+													className="bg-yellow-500/90 text-black uppercase tracking-wider"
+													variant="outline"
+												>
+													[L]
+												</Badge>
+											</div>
+										) : null}
+
+										<div className="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center backdrop-blur-[2px]">
+											<div className="h-12 w-12 rounded-full bg-primary/90 p-0 shadow-lg flex items-center justify-center">
+												<span className="material-symbols-outlined text-3xl ml-1">
+													play_arrow
+												</span>
+											</div>
+										</div>
+									</div>
+
+									<div className="flex flex-col">
+										<h3 className="font-medium text-sm leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors group-focus:text-primary">
+											{movie.title}
+										</h3>
+										<p className="text-xs text-muted-foreground truncate mt-0.5">
+											{firstVariant?.groupTitle ?? "Sem grupo"}
+										</p>
+									</div>
+								</Card>
+							);
+						})}
+					</div>
+
+					<div className="py-12 flex justify-center w-full">
+						<Button
+							variant="outline"
+							disabled={!hasNextPage || isFetchingNextPage}
+							onClick={() => {
+								void fetchNextPage();
+							}}
+							type="button"
+						>
+							{isFetchingNextPage ? (
+								<div className="flex items-center gap-2">
+									<LoadingSpinner size="sm" />
+									Carregando...
+								</div>
+							) : hasNextPage ? (
+								"Carregar Mais"
+							) : (
+								"Fim"
+							)}
+						</Button>
+					</div>
+				</div>
+			</main>
+		</LayoutShell>
+	);
+}

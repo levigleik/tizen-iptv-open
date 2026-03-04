@@ -1,6 +1,10 @@
 import Image from "next/image";
 
 import { LayoutShell } from "@/components/iptv/layout-shell";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 const CONTINUE_WATCHING = [
 	{
@@ -72,29 +76,32 @@ export default function Home() {
 							<span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
 								search
 							</span>
-							<input
-								className="w-full bg-secondary/50 border-transparent focus:border-primary focus:ring-1 focus:ring-primary rounded-full pl-10 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground transition-all"
+							<Input
+								className="w-full rounded-full bg-secondary/50 pl-10"
 								placeholder="Search..."
 								type="text"
 							/>
 						</div>
 					</div>
 					<div className="flex items-center gap-3">
-						<button
+						<Button
 							className="rounded-full w-10 h-10 flex items-center justify-center bg-black/40 backdrop-blur text-white hover:bg-white/20 transition-colors border border-white/10"
 							type="button"
+							variant="ghost"
 						>
 							<span className="material-symbols-outlined">search</span>
-						</button>
-						<button
+						</Button>
+						<Button
 							className="rounded-full w-10 h-10 flex items-center justify-center bg-black/40 backdrop-blur text-white hover:bg-white/20 transition-colors border border-white/10"
 							type="button"
+							variant="ghost"
 						>
 							<span className="material-symbols-outlined">notifications</span>
-						</button>
-						<button
+						</Button>
+						<Button
 							className="rounded-full w-10 h-10 flex items-center justify-center bg-primary text-white border border-white/10 overflow-hidden"
 							type="button"
+							variant="ghost"
 						>
 							<Image
 								alt="User"
@@ -102,7 +109,7 @@ export default function Home() {
 								src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWbRUZCyO_UVXljOLuUz3FUOb4LrLK2c-N3nEPNPh6gFLeSPRIjaSmW4fJVgwloFpgzghN8fOLl2JAFY6jF6Kt7bX0vu5jIvQtEeo_I5ZSkwB-1cWxZMutt9-Hw-lhpKuE_-bLTro60B4RXnxiPS99YdSWcedIKh-tWEIPV5gGIto2fgxUGNgIgoNcAyt4XSS3DmSkdMVmC0TPStL0xkpLtDEm0HGXpDbhfoQDjJTcD6_rvACw09tWULkyMDtRa64YbiwduF7A9aJs"
 								width={40}
 							/>
-						</button>
+						</Button>
 					</div>
 				</header>
 
@@ -111,18 +118,30 @@ export default function Home() {
 						<div className="hero-overlay" />
 						<div className="absolute inset-0 flex flex-col justify-end p-8 md:p-12 lg:p-16 z-10 w-full md:w-2/3 lg:w-1/2">
 							<div className="flex items-center gap-2 mb-3">
-								<span className="inline-flex items-center rounded-sm bg-yellow-500/90 px-1.5 py-0.5 text-[10px] font-bold text-black shadow uppercase tracking-wider">
+								<Badge
+									className="bg-yellow-500/90 text-black uppercase tracking-wider"
+									variant="outline"
+								>
 									IMDb 8.6
-								</span>
-								<span className="text-xs font-semibold px-2 py-0.5 border border-white/30 rounded backdrop-blur-sm text-white/90">
+								</Badge>
+								<Badge
+									className="border-white/30 text-white/90"
+									variant="outline"
+								>
 									2023
-								</span>
-								<span className="text-xs font-semibold px-2 py-0.5 border border-white/30 rounded backdrop-blur-sm text-white/90">
+								</Badge>
+								<Badge
+									className="border-white/30 text-white/90"
+									variant="outline"
+								>
 									180 min
-								</span>
-								<span className="text-xs font-semibold px-2 py-0.5 border border-white/30 rounded backdrop-blur-sm text-white/90">
+								</Badge>
+								<Badge
+									className="border-white/30 text-white/90"
+									variant="outline"
+								>
 									4K UHD
-								</span>
+								</Badge>
 							</div>
 							<h1 className="text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight text-white mb-4 leading-tight drop-shadow-lg">
 								Oppenheimer
@@ -134,30 +153,33 @@ export default function Home() {
 								the man who changed the world forever.
 							</p>
 							<div className="flex flex-wrap items-center gap-4">
-								<button
+								<Button
 									className="inline-flex items-center justify-center gap-2 rounded-full bg-white text-black px-8 py-3 text-sm font-bold shadow-lg hover:bg-gray-200 focus:outline-none focus:ring-4 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background transition-all hover:scale-105 active:scale-95"
 									type="button"
+									variant="ghost"
 								>
 									<span className="material-symbols-outlined text-xl">
 										play_arrow
 									</span>
 									Watch Now
-								</button>
-								<button
+								</Button>
+								<Button
 									className="inline-flex items-center justify-center gap-2 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 px-6 py-3 text-sm font-semibold shadow-sm hover:bg-white/20 focus:outline-none focus:ring-4 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background transition-all hover:scale-105 active:scale-95"
 									type="button"
+									variant="ghost"
 								>
 									<span className="material-symbols-outlined text-xl">add</span>
 									My List
-								</button>
-								<button
+								</Button>
+								<Button
 									className="inline-flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 w-12 h-12 shadow-sm hover:bg-white/20 focus:outline-none focus:ring-4 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background transition-all hover:scale-105 active:scale-95"
 									type="button"
+									variant="ghost"
 								>
 									<span className="material-symbols-outlined text-xl">
 										info
 									</span>
-								</button>
+								</Button>
 							</div>
 						</div>
 					</div>
@@ -168,22 +190,22 @@ export default function Home() {
 								<h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
 									Continue Watching
 								</h2>
-								<button
+								<Button
 									className="text-sm text-muted-foreground hover:text-white transition-colors flex items-center gap-1 group"
 									type="button"
+									variant="ghost"
 								>
 									View All
 									<span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">
 										arrow_forward
 									</span>
-								</button>
+								</Button>
 							</div>
 
 							<div className="horizontal-scroll hide-scrollbar">
 								{CONTINUE_WATCHING.map((item) => (
-									<a
-										className="movie-card group flex flex-col gap-2 outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background rounded-lg p-1"
-										href="#"
+									<Card
+										className="movie-card group flex flex-col gap-2 border-none bg-transparent p-1 shadow-none flex"
 										key={item.title}
 									>
 										<div className="movie-poster-container bg-muted aspect-video pb-[56.25%]">
@@ -197,14 +219,14 @@ export default function Home() {
 											/>
 											<div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors" />
 											<div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity">
-												<button
-													className="rounded-full w-12 h-12 bg-primary/90 text-primary-foreground flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 group-focus:scale-100 transition-transform"
+												<Button
+													className="h-12 w-12 rounded-full bg-primary/90 p-0"
 													type="button"
 												>
 													<span className="material-symbols-outlined text-3xl ml-1">
 														play_arrow
 													</span>
-												</button>
+												</Button>
 											</div>
 											<div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
 												<div
@@ -220,7 +242,7 @@ export default function Home() {
 												{item.description}
 											</p>
 										</div>
-									</a>
+									</Card>
 								))}
 							</div>
 						</section>
@@ -230,74 +252,83 @@ export default function Home() {
 								<h2 className="text-xl font-bold tracking-tight text-foreground">
 									Top Rated Movies
 								</h2>
-								<button
+								<Button
 									className="text-sm text-muted-foreground hover:text-white transition-colors flex items-center gap-1 group"
 									type="button"
+									variant="ghost"
 								>
 									View All
 									<span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">
 										arrow_forward
 									</span>
-								</button>
+								</Button>
 							</div>
 
 							<div className="horizontal-scroll hide-scrollbar">
 								{TOP_RATED.map((item) => (
-									<a
-										className="movie-card group flex flex-col gap-2 outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background rounded-lg p-1"
-										href="#"
+									<Card
+										className="movie-card group flex flex-col gap-2 border-none bg-transparent p-1 shadow-none"
 										key={item.title}
 									>
-										<div className="movie-poster-container bg-muted">
-											<Image
-												alt={item.title}
-												className="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105"
-												fill
-												loading="lazy"
-												sizes="(min-width: 768px) 200px, (min-width: 640px) 180px, 160px"
-												src={item.image}
-											/>
-											<div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
-												{item.badges.map((badge) => (
-													<span
-														className={
-															badge === "HDR"
-																? "inline-flex items-center rounded-sm bg-blue-600/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow backdrop-blur-sm border border-white/10 uppercase tracking-wider"
-																: "inline-flex items-center rounded-sm bg-black/80 px-1.5 py-0.5 text-[10px] font-bold text-white shadow backdrop-blur-sm border border-white/10 uppercase tracking-wider"
-														}
-														key={`${item.title}-${badge}`}
-													>
-														{badge}
-													</span>
-												))}
-											</div>
-											{item.leftBadge ? (
-												<div className="absolute top-2 left-2">
-													<span className="inline-flex items-center rounded-sm bg-yellow-500/90 px-1.5 py-0.5 text-[10px] font-bold text-black shadow backdrop-blur-sm uppercase tracking-wider">
-														{item.leftBadge}
-													</span>
+										<a
+											className="outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background rounded-lg"
+											href="#"
+										>
+											<div className="movie-poster-container bg-muted">
+												<Image
+													alt={item.title}
+													className="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105"
+													fill
+													loading="lazy"
+													sizes="(min-width: 768px) 200px, (min-width: 640px) 180px, 160px"
+													src={item.image}
+												/>
+												<div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+													{item.badges.map((badge) => (
+														<Badge
+															className={
+																badge === "HDR"
+																	? "bg-blue-600/90 text-white border-white/10 uppercase tracking-wider"
+																	: "bg-black/80 text-white border-white/10 uppercase tracking-wider"
+															}
+															key={`${item.title}-${badge}`}
+															variant="outline"
+														>
+															{badge}
+														</Badge>
+													))}
 												</div>
-											) : null}
-											<div className="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center backdrop-blur-[2px]">
-												<button
-													className="rounded-full w-12 h-12 bg-primary/90 text-primary-foreground flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 group-focus:scale-100 transition-transform"
-													type="button"
-												>
-													<span className="material-symbols-outlined text-3xl ml-1">
-														play_arrow
-													</span>
-												</button>
+												{item.leftBadge ? (
+													<div className="absolute top-2 left-2">
+														<Badge
+															className="bg-yellow-500/90 text-black uppercase tracking-wider"
+															variant="outline"
+														>
+															{item.leftBadge}
+														</Badge>
+													</div>
+												) : null}
+												<div className="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center backdrop-blur-[2px]">
+													<Button
+														className="h-12 w-12 rounded-full bg-primary/90 p-0"
+														type="button"
+													>
+														<span className="material-symbols-outlined text-3xl ml-1">
+															play_arrow
+														</span>
+													</Button>
+												</div>
 											</div>
-										</div>
-										<div className="flex flex-col">
-											<h3 className="font-medium text-sm leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors group-focus:text-primary">
-												{item.title}
-											</h3>
-											<p className="text-xs text-muted-foreground truncate mt-0.5">
-												{item.description}
-											</p>
-										</div>
-									</a>
+											<div className="flex flex-col">
+												<h3 className="font-medium text-sm leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors group-focus:text-primary">
+													{item.title}
+												</h3>
+												<p className="text-xs text-muted-foreground truncate mt-0.5">
+													{item.description}
+												</p>
+											</div>
+										</a>
+									</Card>
 								))}
 							</div>
 						</section>

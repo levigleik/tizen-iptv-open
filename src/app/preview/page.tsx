@@ -7,6 +7,7 @@ import { Suspense, useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/ui/loading";
 import {
 	Card,
 	CardContent,
@@ -16,14 +17,15 @@ import {
 } from "@/components/ui/card";
 import { useTvRemote } from "@/hooks/use-tv-remote";
 import { fetchGroupedCategoryPage } from "@/lib/iptv";
+import { useAppSettingsStore } from "@/lib/settings-store";
 import type {
 	CatalogCategory,
 	GroupedCategoryPageDto,
 	GroupedChannelDto,
 	GroupedEntryVariantDto,
 	GroupedMovieDto,
-	GroupedSeriesEpisodeDto,
 	GroupedSeriesDto,
+	GroupedSeriesEpisodeDto,
 } from "@/types/iptv";
 
 const CATEGORY_LABEL: Record<CatalogCategory, string> = {
@@ -50,6 +52,7 @@ function PreviewContent() {
 		categoryParam === "channels"
 			? categoryParam
 			: null;
+	const adult = useAppSettingsStore((state) => state.adult);
 
 	const { data, isPending, error } = useQuery<
 		GroupedCategoryPageDto<
@@ -65,6 +68,7 @@ function PreviewContent() {
 			perPage,
 			search,
 			groupTitle,
+			adult,
 		],
 		enabled: Boolean(mac && category && title),
 		queryFn: ({ signal }) => {
@@ -75,6 +79,7 @@ function PreviewContent() {
 				category,
 				page,
 				perPage,
+				adult,
 				search,
 				groupTitle,
 				signal,
@@ -223,8 +228,9 @@ function PreviewContent() {
 
 				{isPending && (
 					<Card>
-						<CardContent className="py-6">
-							Carregando pré-visualização...
+						<CardContent className="flex items-center gap-3 py-6">
+							<LoadingSpinner size="sm" />
+							Carregando detalhes...
 						</CardContent>
 					</Card>
 				)}

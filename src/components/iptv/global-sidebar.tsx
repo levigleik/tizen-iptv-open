@@ -11,18 +11,18 @@ type GlobalSidebarProps = {
 };
 
 const NAV_ITEMS: SidebarItem[] = [
-	{ key: "home", icon: "home", label: "Home", href: "#" },
-	{ key: "live-tv", icon: "tv", label: "Live TV", href: "#" },
-	{ key: "movies", icon: "movie", label: "Movies", href: "#" },
-	{ key: "series", icon: "smart_display", label: "Series", href: "#" },
+	{ key: "home", icon: "home", label: "Início", href: "/" },
+	{ key: "live-tv", icon: "tv", label: "Canais", href: "/channels" },
+	{ key: "movies", icon: "movie", label: "Filmes", href: "/movies" },
+	{ key: "series", icon: "smart_display", label: "Séries", href: "/series" },
 	{
 		key: "favorites",
 		icon: "favorite",
-		label: "Favorites",
+		label: "Favoritos",
 		href: "#",
 		dividerBefore: true,
 	},
-	{ key: "history", icon: "history", label: "History", href: "#" },
+	{ key: "history", icon: "history", label: "Histórico", href: "#" },
 ];
 
 export function GlobalSidebar({ activeItem = "home" }: GlobalSidebarProps) {
@@ -60,11 +60,15 @@ export function GlobalSidebar({ activeItem = "home" }: GlobalSidebarProps) {
 
 			<div className="p-4 w-full mt-auto border-t border-border/50">
 				<a
-					className="flex items-center gap-3 px-3 py-3 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors justify-center md:justify-start"
-					href="#"
+					className={
+						activeItem === "settings"
+							? "flex items-center gap-3 px-3 py-3 rounded-md bg-primary text-primary-foreground shadow-sm transition-colors justify-center md:justify-start"
+							: "flex items-center gap-3 px-3 py-3 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors justify-center md:justify-start"
+					}
+					href="/settings"
 				>
 					<span className="material-symbols-outlined">settings</span>
-					<span className="font-medium hidden md:block">Settings</span>
+					<span className="font-medium hidden md:block">Configurações</span>
 				</a>
 			</div>
 		</aside>

@@ -22,6 +22,7 @@ function buildGroupedCategoryUrl(
 	category: CatalogCategory,
 	page: number,
 	perPage: number,
+	adult = false,
 	search?: string,
 	groupTitle?: string,
 ): string {
@@ -39,15 +40,22 @@ function buildGroupedCategoryUrl(
 		params.set("groupTitle", groupTitle.trim());
 	}
 
+	params.set("adult", String(adult));
+
 	return `${getApiBaseUrl()}/iptv/${cleanMac}/grouped/${category}?${params.toString()}`;
 }
 
 function buildGroupedCategoryListUrl(
 	mac: string,
 	category: CatalogCategory,
+	adult = false,
 ): string {
 	const cleanMac = normalizeMac(mac);
-	return `${getApiBaseUrl()}/iptv/${cleanMac}/grouped/${category}/category`;
+	const params = new URLSearchParams({
+		adult: String(adult),
+	});
+
+	return `${getApiBaseUrl()}/iptv/${cleanMac}/grouped/${category}/category?${params.toString()}`;
 }
 
 export async function fetchGroupedCategoryPage(
@@ -55,6 +63,7 @@ export async function fetchGroupedCategoryPage(
 	category: CatalogCategory,
 	page: number,
 	perPage: number,
+	adult = false,
 	search?: string,
 	groupTitle?: string,
 	signal?: AbortSignal,
@@ -62,7 +71,15 @@ export async function fetchGroupedCategoryPage(
 	GroupedCategoryPageDto<GroupedMovieDto | GroupedSeriesDto | GroupedChannelDto>
 > {
 	const response = await fetch(
-		buildGroupedCategoryUrl(mac, category, page, perPage, search, groupTitle),
+		buildGroupedCategoryUrl(
+			mac,
+			category,
+			page,
+			perPage,
+			adult,
+			search,
+			groupTitle,
+		),
 		{
 			headers: {
 				Accept: "application/json",
@@ -87,12 +104,21 @@ export async function fetchGroupedMoviesPage(
 	mac: string,
 	page: number,
 	perPage: number,
+	adult = false,
 	search?: string,
 	groupTitle?: string,
 	signal?: AbortSignal,
 ): Promise<GroupedCategoryPageDto<GroupedMovieDto>> {
 	const response = await fetch(
-		buildGroupedCategoryUrl(mac, "movies", page, perPage, search, groupTitle),
+		buildGroupedCategoryUrl(
+			mac,
+			"movies",
+			page,
+			perPage,
+			adult,
+			search,
+			groupTitle,
+		),
 		{
 			headers: {
 				Accept: "application/json",
@@ -115,12 +141,21 @@ export async function fetchGroupedSeriesPage(
 	mac: string,
 	page: number,
 	perPage: number,
+	adult = false,
 	search?: string,
 	groupTitle?: string,
 	signal?: AbortSignal,
 ): Promise<GroupedCategoryPageDto<GroupedSeriesDto>> {
 	const response = await fetch(
-		buildGroupedCategoryUrl(mac, "series", page, perPage, search, groupTitle),
+		buildGroupedCategoryUrl(
+			mac,
+			"series",
+			page,
+			perPage,
+			adult,
+			search,
+			groupTitle,
+		),
 		{
 			headers: {
 				Accept: "application/json",
@@ -143,12 +178,21 @@ export async function fetchGroupedChannelsPage(
 	mac: string,
 	page: number,
 	perPage: number,
+	adult = false,
 	search?: string,
 	groupTitle?: string,
 	signal?: AbortSignal,
 ): Promise<GroupedCategoryPageDto<GroupedChannelDto>> {
 	const response = await fetch(
-		buildGroupedCategoryUrl(mac, "channels", page, perPage, search, groupTitle),
+		buildGroupedCategoryUrl(
+			mac,
+			"channels",
+			page,
+			perPage,
+			adult,
+			search,
+			groupTitle,
+		),
 		{
 			headers: {
 				Accept: "application/json",
@@ -170,15 +214,19 @@ export async function fetchGroupedChannelsPage(
 export async function fetchGroupedCategoryList(
 	mac: string,
 	category: CatalogCategory,
+	adult = false,
 	signal?: AbortSignal,
 ): Promise<GroupedCategoryListDto> {
-	const response = await fetch(buildGroupedCategoryListUrl(mac, category), {
-		headers: {
-			Accept: "application/json",
+	const response = await fetch(
+		buildGroupedCategoryListUrl(mac, category, adult),
+		{
+			headers: {
+				Accept: "application/json",
+			},
+			signal,
+			cache: "no-store",
 		},
-		signal,
-		cache: "no-store",
-	});
+	);
 
 	if (!response.ok) {
 		throw new Error(

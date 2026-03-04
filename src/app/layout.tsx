@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
 import { QueryProvider } from "@/components/providers/query-provider";
+import { TvRemoteNavigationProvider } from "@/components/providers/tv-remote-navigation-provider";
 
 import "./globals.css";
 
@@ -21,7 +22,7 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="pt-BR" className="dark">
+		<html lang="pt-BR" suppressHydrationWarning>
 			<head>
 				<link
 					href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
@@ -29,7 +30,9 @@ export default function RootLayout({
 				/>
 			</head>
 			<body className={`${inter.variable} antialiased`}>
-				<QueryProvider>{children}</QueryProvider>
+				<QueryProvider>
+					<TvRemoteNavigationProvider>{children}</TvRemoteNavigationProvider>
+				</QueryProvider>
 			</body>
 		</html>
 	);
