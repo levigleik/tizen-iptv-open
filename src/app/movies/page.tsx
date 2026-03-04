@@ -1,6 +1,10 @@
 "use client";
 
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import {
+	useInfiniteQuery,
+	useIsFetching,
+	useQuery,
+} from "@tanstack/react-query";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -10,7 +14,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { LoadingSpinner } from "@/components/ui/loading";
 import {
 	Select,
 	SelectContent,
@@ -18,6 +21,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { fetchGroupedCategoryList, fetchGroupedMoviesPage } from "@/lib/iptv";
 import { useAppSettingsStore } from "@/lib/settings-store";
 import { resolveMacAddress } from "@/lib/tizen";
@@ -45,8 +50,6 @@ export default function MoviesPage() {
 	const initialGroupTitle = searchParams.get("groupTitle") ?? "";
 	const initialSort = (searchParams.get("sort") as SortMode) ?? "default";
 	const [mac, setMac] = useState("");
-	const [searchInput, setSearchInput] = useState(initialSearch);
-	const [search, setSearch] = useState(initialSearch);
 	const [selectedGroupTitle, setSelectedGroupTitle] =
 		useState(initialGroupTitle);
 	const [sortMode, setSortMode] = useState<SortMode>(
@@ -55,6 +58,17 @@ export default function MoviesPage() {
 			: "default",
 	);
 	const adult = useAppSettingsStore((state) => state.adult);
+	const isSearchFetching =
+		useIsFetching({
+			queryKey: ["movie-grouped", mac],
+		}) > 0;
+	const { isOptimisticLoading, search, searchInput, setSearchInput } =
+		useDebouncedSearch({
+			initialValue: initialSearch,
+			delayMs: 1300,
+			minChars: 3,
+			isFetching: isSearchFetching,
+		});
 
 	useEffect(() => {
 		setMac(resolveMacAddress());
@@ -126,6 +140,7 @@ export default function MoviesPage() {
 	});
 
 	const groups = groupsResponse?.data ?? [];
+	const isSearchLoading = isPending || isOptimisticLoading;
 	const movies = useMemo(() => {
 		const merged = data?.pages.flatMap((page) => page.data) ?? [];
 
@@ -160,10 +175,6 @@ export default function MoviesPage() {
 		router.push(`/movies/details?${params.toString()}`);
 	};
 
-	const applySearch = () => {
-		setSearch(searchInput.trim());
-	};
-
 	return (
 		<LayoutShell activeSidebarItem="movies">
 			<main className="flex-1 flex flex-col h-full relative overflow-hidden bg-background">
@@ -179,9 +190,6 @@ export default function MoviesPage() {
 							<Input
 								className="w-full rounded-full bg-secondary/50 pl-10"
 								onChange={(event) => setSearchInput(event.target.value)}
-								onKeyDown={(event) => {
-									if (event.key === "Enter") applySearch();
-								}}
 								placeholder="Procurar filmes..."
 								type="text"
 								value={searchInput}
@@ -221,10 +229,6 @@ export default function MoviesPage() {
 								<SelectItem value="title-desc">Nome (Z-A)</SelectItem>
 							</SelectContent>
 						</Select>
-
-						<Button variant="outline" onClick={applySearch} type="button">
-							Apply
-						</Button>
 					</div>
 				</header>
 
@@ -239,97 +243,107 @@ export default function MoviesPage() {
 						</span>
 					</div>
 
-					{isPending ? (
-						<div className="flex items-center gap-3 text-sm text-muted-foreground">
-							<LoadingSpinner size="sm" />
-							Carregando filmes...
-						</div>
-					) : null}
-
 					{error instanceof Error ? (
 						<div className="text-sm text-destructive">{error.message}</div>
 					) : null}
 
-					<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-x-4 gap-y-8">
-						{movies.map((movie) => {
-							const firstVariant = movie.variants[0];
-							const tags = unique(
-								movie.variants.flatMap((variant) => variant.qualityTags),
-							);
-							const hasLegendado = movie.variants.some(
-								(variant) => variant.isLegendado,
-							);
-
-							return (
-								<Card
-									className="movie-card cursor-pointer group flex flex-col gap-2 outline-none border-none bg-transparent shadow-none"
-									key={movie.title}
-									onClick={() => openMovieDetails(movie)}
-									onKeyDown={(event) => {
-										if (event.key === "Enter" || event.key === " ") {
-											event.preventDefault();
-											openMovieDetails(movie);
-										}
-									}}
-									role="button"
-									tabIndex={0}
+					{isSearchLoading ? (
+						<div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
+							{Array.from({ length: 16 }).map((_, index) => (
+								<div
+									className="flex flex-col gap-2"
+									key={`movies-skeleton-${index}`}
 								>
-									<div className="movie-poster-container bg-muted">
-										{firstVariant?.tvgLogo ? (
-											<Image
-												alt={movie.title}
-												className="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105"
-												fill
-												loading="lazy"
-												sizes="(min-width: 1536px) 12.5vw, (min-width: 1280px) 16.66vw, (min-width: 1024px) 20vw, (min-width: 768px) 25vw, (min-width: 640px) 33.33vw, 50vw"
-												src={firstVariant.tvgLogo}
-											/>
-										) : null}
+									<Skeleton className="aspect-2/3 w-full rounded-xl" />
+									<div className="space-y-2">
+										<Skeleton className="h-4 w-4/5" />
+										<Skeleton className="h-3 w-3/5" />
+									</div>
+								</div>
+							))}
+						</div>
+					) : (
+						<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-x-4 gap-y-8">
+							{movies.map((movie) => {
+								const firstVariant = movie.variants[0];
+								const tags = unique(
+									movie.variants.flatMap((variant) => variant.qualityTags),
+								);
+								const hasLegendado = movie.variants.some(
+									(variant) => variant.isLegendado,
+								);
 
-										<div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
-											{tags.map((badge) => (
-												<Badge
-													className={badgeClass(badge)}
-													key={`${movie.title}-${badge}`}
-													variant="outline"
-												>
-													{badge}
-												</Badge>
-											))}
+								return (
+									<Card
+										className="movie-card cursor-pointer group flex flex-col gap-2 outline-none border-none bg-transparent shadow-none"
+										key={movie.title}
+										onClick={() => openMovieDetails(movie)}
+										onKeyDown={(event) => {
+											if (event.key === "Enter" || event.key === " ") {
+												event.preventDefault();
+												openMovieDetails(movie);
+											}
+										}}
+										role="button"
+										tabIndex={0}
+									>
+										<div className="movie-poster-container bg-muted">
+											{firstVariant?.tvgLogo ? (
+												<Image
+													alt={movie.title}
+													className="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105"
+													fill
+													loading="lazy"
+													sizes="(min-width: 1536px) 12.5vw, (min-width: 1280px) 16.66vw, (min-width: 1024px) 20vw, (min-width: 768px) 25vw, (min-width: 640px) 33.33vw, 50vw"
+													src={firstVariant.tvgLogo}
+												/>
+											) : null}
+
+											<div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+												{tags.map((badge) => (
+													<Badge
+														className={badgeClass(badge)}
+														key={`${movie.title}-${badge}`}
+														variant="outline"
+													>
+														{badge}
+													</Badge>
+												))}
+											</div>
+
+											{hasLegendado ? (
+												<div className="absolute top-2 left-2">
+													<Badge
+														className="bg-yellow-500/90 text-black uppercase tracking-wider"
+														variant="outline"
+													>
+														[L]
+													</Badge>
+												</div>
+											) : null}
+
+											<div className="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center backdrop-blur-[2px]">
+												<div className="h-12 w-12 rounded-full bg-primary/90 p-0 shadow-lg flex items-center justify-center">
+													<span className="material-symbols-outlined text-3xl ml-1">
+														play_arrow
+													</span>
+												</div>
+											</div>
 										</div>
 
-										{hasLegendado ? (
-											<div className="absolute top-2 left-2">
-												<Badge
-													className="bg-yellow-500/90 text-black uppercase tracking-wider"
-													variant="outline"
-												>
-													[L]
-												</Badge>
-											</div>
-										) : null}
-
-										<div className="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center backdrop-blur-[2px]">
-											<div className="h-12 w-12 rounded-full bg-primary/90 p-0 shadow-lg flex items-center justify-center">
-												<span className="material-symbols-outlined text-3xl ml-1">
-													play_arrow
-												</span>
-											</div>
+										<div className="flex flex-col">
+											<h3 className="font-medium text-sm leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors group-focus:text-primary">
+												{movie.title}
+											</h3>
+											<p className="text-xs text-muted-foreground truncate mt-0.5">
+												{firstVariant?.groupTitle ?? "Sem grupo"}
+											</p>
 										</div>
-									</div>
-
-									<div className="flex flex-col">
-										<h3 className="font-medium text-sm leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors group-focus:text-primary">
-											{movie.title}
-										</h3>
-										<p className="text-xs text-muted-foreground truncate mt-0.5">
-											{firstVariant?.groupTitle ?? "Sem grupo"}
-										</p>
-									</div>
-								</Card>
-							);
-						})}
-					</div>
+									</Card>
+								);
+							})}
+						</div>
+					)}
 
 					<div className="py-12 flex justify-center w-full">
 						<Button
@@ -341,10 +355,7 @@ export default function MoviesPage() {
 							type="button"
 						>
 							{isFetchingNextPage ? (
-								<div className="flex items-center gap-2">
-									<LoadingSpinner size="sm" />
-									Carregando...
-								</div>
+								<Skeleton className="h-4 w-24 bg-background/60" />
 							) : hasNextPage ? (
 								"Carregar Mais"
 							) : (
