@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 
+import { PwaProvider } from "@/components/providers/pwa-provider";
 import { SettingsSync } from "@/components/providers/settings-sync";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 
@@ -26,8 +27,12 @@ export function QueryProvider({ children }: QueryProviderProps) {
 
 	return (
 		<ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-			<SettingsSync />
-			<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+			<PwaProvider>
+				<SettingsSync />
+				<QueryClientProvider client={queryClient}>
+					{children}
+				</QueryClientProvider>
+			</PwaProvider>
 		</ThemeProvider>
 	);
 }
