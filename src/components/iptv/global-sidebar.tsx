@@ -1,3 +1,7 @@
+"use client";
+
+import { type FocusEvent, useState } from "react";
+
 type SidebarItem = {
 	key: string;
 	icon: string;
@@ -19,20 +23,49 @@ const NAV_ITEMS: SidebarItem[] = [
 		key: "favorites",
 		icon: "favorite",
 		label: "Favoritos",
-		href: "#",
+		href: "/favorites",
 		dividerBefore: true,
 	},
-	{ key: "history", icon: "history", label: "Histórico", href: "#" },
+	{ key: "history", icon: "history", label: "Histórico", href: "/history" },
 ];
 
 export function GlobalSidebar({ activeItem = "home" }: GlobalSidebarProps) {
+	const [isExpanded, setIsExpanded] = useState(false);
+
+	const handleFocusOut = (event: FocusEvent<HTMLElement>) => {
+		const nextFocused = event.relatedTarget;
+		if (
+			nextFocused instanceof Node &&
+			event.currentTarget.contains(nextFocused)
+		) {
+			return;
+		}
+
+		setIsExpanded(false);
+	};
+
+	const sidebarWidth = isExpanded ? "w-64" : "w-20";
+	const labelVisibility = isExpanded
+		? "max-w-[220px] opacity-100 translate-x-0"
+		: "max-w-0 opacity-0 -translate-x-2";
+	const itemLayout = isExpanded
+		? "justify-start gap-3"
+		: "justify-center gap-0";
+
 	return (
-		<aside className="w-20 md:w-64 border-r border-border bg-card flex flex-col items-center md:items-start shrink-0 z-20 transition-all duration-300">
-			<div className="h-16 flex items-center justify-center md:justify-start md:px-6 w-full shrink-0 border-b border-border/50">
+		<aside
+			data-sidebar-root="true"
+			className={`${sidebarWidth} flex flex-col items-center shrink-0 z-20 transition-[width] duration-300 ease-out`}
+			onFocusCapture={() => setIsExpanded(true)}
+			onBlurCapture={handleFocusOut}
+		>
+			<div className="h-20 flex items-center justify-center px-4 w-full shrink-0 border-b border-border/50 overflow-hidden">
 				<span className="material-symbols-outlined text-primary text-3xl">
 					live_tv
 				</span>
-				<span className="ml-3 font-bold text-xl tracking-tight hidden md:block">
+				<span
+					className={`${isExpanded ? "ml-3" : "ml-0"} font-bold text-xl tracking-tight whitespace-nowrap overflow-hidden transition-all duration-200 ${labelVisibility}`}
+				>
 					PlayTV
 				</span>
 			</div>
@@ -41,18 +74,27 @@ export function GlobalSidebar({ activeItem = "home" }: GlobalSidebarProps) {
 				{NAV_ITEMS.map((item) => (
 					<div key={item.key}>
 						{item.dividerBefore ? (
-							<div className="my-4 border-t border-border/50 w-full hidden md:block" />
+							<div
+								className={`my-4 border-t border-border/50 w-full transition-opacity duration-200 ${
+									isExpanded ? "opacity-100" : "opacity-0"
+								}`}
+							/>
 						) : null}
 						<a
 							className={
 								item.key === activeItem
-									? "flex items-center gap-3 px-3 py-3 rounded-md bg-primary text-primary-foreground shadow-sm transition-colors"
-									: "flex items-center gap-3 px-3 py-3 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+									? `group relative flex items-center ${itemLayout} px-3 py-3 rounded-md bg-primary text-primary-foreground shadow-sm  transition-colors focus-visible:ring-2 focus-visible:ring-ring`
+									: `group relative flex items-center ${itemLayout} px-3 py-3 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent  transition-colors focus-visible:ring-2 focus-visible:ring-ring`
 							}
 							href={item.href}
+							data-sidebar-focus="true"
 						>
 							<span className="material-symbols-outlined">{item.icon}</span>
-							<span className="font-medium hidden md:block">{item.label}</span>
+							<span
+								className={`font-medium whitespace-nowrap overflow-hidden transition-all duration-200 ${labelVisibility}`}
+							>
+								{item.label}
+							</span>
 						</a>
 					</div>
 				))}
@@ -62,13 +104,18 @@ export function GlobalSidebar({ activeItem = "home" }: GlobalSidebarProps) {
 				<a
 					className={
 						activeItem === "settings"
-							? "flex items-center gap-3 px-3 py-3 rounded-md bg-primary text-primary-foreground shadow-sm transition-colors justify-center md:justify-start"
-							: "flex items-center gap-3 px-3 py-3 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors justify-center md:justify-start"
+							? `group relative flex items-center ${itemLayout} px-3 py-3 rounded-md bg-primary text-primary-foreground shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring`
+							: `group relative flex items-center ${itemLayout} px-3 py-3 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors focus-visible:ring-2 focus-visible:ring-ring`
 					}
 					href="/settings"
+					data-sidebar-focus="true"
 				>
 					<span className="material-symbols-outlined">settings</span>
-					<span className="font-medium hidden md:block">Configurações</span>
+					<span
+						className={`font-medium whitespace-nowrap overflow-hidden transition-all duration-200 ${labelVisibility}`}
+					>
+						Configurações
+					</span>
 				</a>
 			</div>
 		</aside>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -43,12 +45,37 @@ export function CatalogNavbar({
 	onSortValueChange,
 	sortOptions,
 }: CatalogNavbarProps) {
+	const searchInputRef = useRef<HTMLInputElement>(null);
+	const categoryTriggerRef = useRef<HTMLButtonElement>(null);
+
 	useTvRemote({
 		enabled: true,
 		onAction: (action) => {
-			if (action !== "red") return false;
-			onClearFilters();
-			return true;
+			if (action === "red") {
+				onClearFilters();
+				return true;
+			}
+
+			if (action === "green") {
+				const input = searchInputRef.current;
+				if (!input) return false;
+
+				input.focus();
+				const end = input.value.length;
+				input.setSelectionRange(end, end);
+				return true;
+			}
+
+			if (action === "yellow") {
+				const trigger = categoryTriggerRef.current;
+				if (!trigger) return false;
+
+				trigger.focus();
+				trigger.click();
+				return true;
+			}
+
+			return false;
 		},
 	});
 
@@ -59,13 +86,15 @@ export function CatalogNavbar({
 					{title}
 				</h1>
 				<div className="group relative w-full max-w-md">
-					<span className="material-symbols-outlined absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary">
+					<span className="absolute top-1/2 left-3 -translate-y-1/2 h-2.5 w-2.5 rounded-full bg-green-500" />
+					<span className="material-symbols-outlined absolute top-1/2 left-7 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary">
 						search
 					</span>
 					<Input
-						className="w-full rounded-full bg-secondary/50 pl-10"
+						className="w-full rounded-full bg-secondary/50 pl-14"
 						onChange={(event) => onSearchChange(event.target.value)}
 						placeholder={searchPlaceholder}
+						ref={searchInputRef}
 						type="text"
 						value={searchValue}
 					/>
@@ -87,7 +116,11 @@ export function CatalogNavbar({
 					}}
 					value={selectedGroupTitle || "__all"}
 				>
-					<SelectTrigger className="w-48 bg-card">
+					<SelectTrigger
+						className="w-48 bg-card gap-2"
+						ref={categoryTriggerRef}
+					>
+						<span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
 						<SelectValue placeholder="Todas Categorias" />
 					</SelectTrigger>
 					<SelectContent>

@@ -17,6 +17,11 @@ export function getApiBaseUrl(): string {
 	return process.env.NEXT_PUBLIC_IPTV_API_BASE_URL ?? DEFAULT_API_BASE_URL;
 }
 
+export function buildMediaProxyUrl(mac: string, entryId: number): string {
+	const cleanMac = normalizeMac(mac);
+	return `${getApiBaseUrl()}/iptv/${cleanMac}/media/${entryId}`;
+}
+
 function buildGroupedCategoryUrl(
 	mac: string,
 	category: CatalogCategory,
@@ -325,6 +330,8 @@ export async function startChannelWatchSession(
 
 	const playlistUrl = toAbsoluteApiUrl(payload.playlistUrl);
 	await waitForPlaylistReady(playlistUrl, signal);
+
+	console.log("Playlist pronta:", playlistUrl);
 	return playlistUrl;
 }
 
@@ -351,14 +358,37 @@ export type UpdateStatusResponse = {
 	};
 };
 
+export type M3uEntrySummaryDto = {
+	id?: number;
+	streamType?: string;
+	type?: string;
+	title?: string;
+	rawTitle?: string;
+	groupTitle?: string;
+	tvgLogo?: string | null;
+};
+
 export type RecentEntryDto = {
 	id?: number;
 	mac?: string;
 	m3uEntryId?: number;
 	entryId?: number;
+	streamType?: string;
+	type?: string;
 	progressSeconds: number;
 	updatedAt?: string;
 	createdAt?: string;
+	m3uEntry?: M3uEntrySummaryDto;
+};
+
+export type FavoriteEntryDto = {
+	id: number;
+	mac: string;
+	m3uEntryId: number;
+	streamType?: string;
+	type?: string;
+	createdAt?: string;
+	m3uEntry?: M3uEntrySummaryDto;
 };
 
 export async function updatePlaylist(mac: string): Promise<UpdateResponse> {
@@ -440,6 +470,35 @@ export async function fetchRecents(
 	}
 
 	return (await response.json()) as RecentEntryDto[];
+}
+
+export async function fetchFavorites(
+	mac: string,
+	limit = 50,
+	signal?: AbortSignal,
+	types?: string[],
+): Promise<FavoriteEntryDto[]> {
+	const cleanMac = normalizeMac(mac);
+	const params = new URLSearchParams({ limit: String(limit) });
+
+	if (types?.length) {
+		params.set("type", types.join(","));
+	}
+
+	const response = await fetch(
+		`${getApiBaseUrl()}/iptv/${cleanMac}/favorites?${params.toString()}`,
+		{
+			headers: { Accept: "application/json" },
+			cache: "no-store",
+			signal,
+		},
+	);
+
+	if (!response.ok) {
+		throw new Error("Falha ao buscar favoritos");
+	}
+
+	return (await response.json()) as FavoriteEntryDto[];
 }
 
 export async function touchRecent(
