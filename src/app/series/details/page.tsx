@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { LayoutShell } from "@/components/iptv/layout-shell";
 import { Badge } from "@/components/ui/badge";
@@ -49,7 +49,7 @@ function formatProgressLabel(seconds: number): string {
 	return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
-export default function SeriesDetailsPage() {
+function SeriesDetailsPageContent() {
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
@@ -479,5 +479,13 @@ export default function SeriesDetailsPage() {
 				</div>
 			</main>
 		</LayoutShell>
+	);
+}
+
+export default function SeriesDetailsPage() {
+	return (
+		<Suspense fallback={null}>
+			<SeriesDetailsPageContent />
+		</Suspense>
 	);
 }

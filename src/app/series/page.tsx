@@ -6,7 +6,7 @@ import {
 	useQuery,
 } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { CatalogImage } from "@/components/iptv/catalog-image";
 import { CatalogNavbar } from "@/components/iptv/catalog-navbar";
 import { LayoutShell } from "@/components/iptv/layout-shell";
@@ -33,7 +33,7 @@ function countEpisodes(series: GroupedSeriesDto): number {
 	);
 }
 
-export default function SeriesPage() {
+function SeriesPageContent() {
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
@@ -387,5 +387,13 @@ export default function SeriesPage() {
 				</div>
 			</main>
 		</LayoutShell>
+	);
+}
+
+export default function SeriesPage() {
+	return (
+		<Suspense fallback={null}>
+			<SeriesPageContent />
+		</Suspense>
 	);
 }

@@ -6,7 +6,7 @@ import {
 	useQuery,
 } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { CatalogImage } from "@/components/iptv/catalog-image";
 import { CatalogNavbar } from "@/components/iptv/catalog-navbar";
 import { LayoutShell } from "@/components/iptv/layout-shell";
@@ -38,7 +38,7 @@ function badgeClass(badge: string) {
 	return "bg-black/80 text-white border-white/10 uppercase tracking-wider";
 }
 
-export default function MoviesPage() {
+function MoviesPageContent() {
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
@@ -403,5 +403,13 @@ export default function MoviesPage() {
 				</div>
 			</main>
 		</LayoutShell>
+	);
+}
+
+export default function MoviesPage() {
+	return (
+		<Suspense fallback={null}>
+			<MoviesPageContent />
+		</Suspense>
 	);
 }

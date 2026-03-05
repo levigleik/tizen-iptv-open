@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 
 import { CatalogImage } from "@/components/iptv/catalog-image";
 import { LayoutShell } from "@/components/iptv/layout-shell";
@@ -134,7 +134,7 @@ function dedupeEpgItems(
 	return result;
 }
 
-export default function ChannelDetailsPage() {
+function ChannelDetailsPageContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 
@@ -687,5 +687,13 @@ export default function ChannelDetailsPage() {
 				</div>
 			</main>
 		</LayoutShell>
+	);
+}
+
+export default function ChannelDetailsPage() {
+	return (
+		<Suspense fallback={null}>
+			<ChannelDetailsPageContent />
+		</Suspense>
 	);
 }
