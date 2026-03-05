@@ -1,115 +1,493 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { CategorySelector } from "@/components/iptv/category-selector";
+import { CatalogImage } from "@/components/iptv/catalog-image";
+import { LayoutShell } from "@/components/iptv/layout-shell";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
-	Card,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { useTvRemote } from "@/hooks/use-tv-remote";
+	fetchGroupedMoviesPage,
+	fetchGroupedSeriesPage,
+	fetchRecents,
+} from "@/lib/iptv";
+import { useAppSettingsStore } from "@/lib/settings-store";
 import { resolveMacAddress } from "@/lib/tizen";
-import type { CatalogCategory } from "@/types/iptv";
+import type {
+	GroupedMovieDto,
+	GroupedSeriesDto,
+	GroupedSeriesEpisodeDto,
+} from "@/types/iptv";
 
-const CATEGORY_ORDER: CatalogCategory[] = ["channels", "series", "movies"];
+function countEpisodes(series: GroupedSeriesDto): number {
+	return series.seasons.reduce(
+		(total, season) => total + season.episodes.length,
+		0,
+	);
+}
 
-const CATEGORY_LABEL: Record<CatalogCategory, string> = {
-	channels: "Canais",
-	series: "Séries",
-	movies: "Filmes",
+function formatProgressLabel(seconds: number): string {
+	const safe = Math.max(0, Math.floor(seconds));
+	const hours = Math.floor(safe / 3600);
+	const minutes = Math.floor((safe % 3600) / 60);
+	const secs = safe % 60;
+
+	if (hours > 0) {
+		return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+	}
+
+	return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
+type RecentHomeItem = {
+	entryId: number;
+	title: string;
+	subtitle: string;
+	logo?: string | null;
+	category: "VOD" | "SERIES";
+	progressSeconds: number;
 };
 
-const CATEGORY_DESCRIPTION: Record<CatalogCategory, string> = {
-	channels: "Programação ao vivo, esportes e notícias.",
-	series: "Temporadas e episódios organizados.",
-	movies: "Catálogo de filmes com variantes de qualidade.",
-};
-
-export default function Home() {
+export default function HomePage() {
 	const router = useRouter();
 	const [mac, setMac] = useState("");
-	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
+	const adult = useAppSettingsStore((state) => state.adult);
 
 	useEffect(() => {
 		setMac(resolveMacAddress());
 	}, []);
 
-	const categoryOptions = useMemo(
-		() =>
-			CATEGORY_ORDER.map((key) => ({
-				key,
-				label: CATEGORY_LABEL[key],
-				description: CATEGORY_DESCRIPTION[key],
-				count: 0,
-			})),
-		[],
-	);
-
-	const openCatalog = (category: CatalogCategory) => {
-		if (!mac) return;
-		const params = new URLSearchParams({ mac, category });
-		router.push(`/catalog?${params.toString()}`);
-	};
-
-	useTvRemote({
-		enabled: true,
-		onAction: (action) => {
-			if (action === "left") {
-				setFocusedCategoryIndex(
-					(current) =>
-						(current - 1 + categoryOptions.length) % categoryOptions.length,
-				);
-				return;
-			}
-
-			if (action === "right") {
-				setFocusedCategoryIndex(
-					(current) => (current + 1) % categoryOptions.length,
-				);
-				return;
-			}
-
-			if (action === "select") {
-				const option = categoryOptions[focusedCategoryIndex];
-				if (option) {
-					openCatalog(option.key);
-				}
-			}
-		},
+	const {
+		data: moviesData,
+		isPending: isMoviesPending,
+		error: moviesError,
+	} = useQuery({
+		queryKey: ["home-movies", mac, adult],
+		enabled: Boolean(mac),
+		queryFn: ({ signal }) =>
+			fetchGroupedMoviesPage(mac, 1, 16, adult, undefined, undefined, signal),
 	});
 
-	return (
-		<div className="min-h-screen bg-background text-foreground">
-			<main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6 lg:px-10">
-				<Card className="border-border/80 bg-card/80">
-					<CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-						<div>
-							<CardTitle className="text-3xl">IPTV Open Tizen</CardTitle>
-							<CardDescription>
-								Selecione o tipo de conteúdo para avançar.
-							</CardDescription>
-						</div>
-						<Badge variant="outline">MAC: {mac || "Detectando..."}</Badge>
-					</CardHeader>
-				</Card>
+	const {
+		data: seriesData,
+		isPending: isSeriesPending,
+		error: seriesError,
+	} = useQuery({
+		queryKey: ["home-series", mac, adult],
+		enabled: Boolean(mac),
+		queryFn: ({ signal }) =>
+			fetchGroupedSeriesPage(mac, 1, 16, adult, undefined, undefined, signal),
+	});
 
-				<section className="space-y-3">
-					<h2 className="text-xl font-semibold">
-						1) Escolha o tipo de conteúdo
-					</h2>
-					<CategorySelector
-						options={categoryOptions}
-						selectedCategory={null}
-						focusedIndex={focusedCategoryIndex}
-						onFocus={setFocusedCategoryIndex}
-						onSelect={openCatalog}
-					/>
-				</section>
+	const {
+		data: recentsData,
+		isPending: isRecentsPending,
+		error: recentsError,
+	} = useQuery({
+		queryKey: ["home-recents", mac],
+		enabled: Boolean(mac),
+		queryFn: ({ signal }) => fetchRecents(mac, 30, signal, ["VOD", "SERIES"]),
+	});
+
+	const movies = moviesData?.data ?? [];
+	const seriesList = seriesData?.data ?? [];
+
+	const movieByEntryId = useMemo(() => {
+		const map = new Map<
+			number,
+			{ movie: GroupedMovieDto; logo?: string | null }
+		>();
+		for (const movie of movies) {
+			for (const variant of movie.variants) {
+				map.set(variant.id, { movie, logo: variant.tvgLogo });
+			}
+		}
+		return map;
+	}, [movies]);
+
+	const seriesByEntryId = useMemo(() => {
+		const map = new Map<
+			number,
+			{
+				series: GroupedSeriesDto;
+				episode: GroupedSeriesEpisodeDto;
+			}
+		>();
+		for (const series of seriesList) {
+			for (const season of series.seasons) {
+				for (const episode of season.episodes) {
+					map.set(episode.id, { series, episode });
+				}
+			}
+		}
+		return map;
+	}, [seriesList]);
+
+	const recents = useMemo<RecentHomeItem[]>(() => {
+		const items: RecentHomeItem[] = [];
+		const seen = new Set<number>();
+
+		for (const recent of recentsData ?? []) {
+			const entryId = recent.m3uEntryId ?? recent.entryId;
+			if (typeof entryId !== "number" || seen.has(entryId)) continue;
+
+			const progressSeconds = Math.max(
+				0,
+				Math.floor(recent.progressSeconds ?? 0),
+			);
+
+			const movieMatch = movieByEntryId.get(entryId);
+			if (movieMatch) {
+				items.push({
+					entryId,
+					title: movieMatch.movie.title,
+					subtitle: progressSeconds
+						? `Retomar em ${formatProgressLabel(progressSeconds)}`
+						: "Filme",
+					logo: movieMatch.logo,
+					category: "VOD",
+					progressSeconds,
+				});
+				seen.add(entryId);
+				continue;
+			}
+
+			const seriesMatch = seriesByEntryId.get(entryId);
+			if (seriesMatch) {
+				items.push({
+					entryId,
+					title: seriesMatch.series.title,
+					subtitle: progressSeconds
+						? `Retomar em ${formatProgressLabel(progressSeconds)}`
+						: "Série",
+					logo: seriesMatch.episode.tvgLogo,
+					category: "SERIES",
+					progressSeconds,
+				});
+				seen.add(entryId);
+			}
+		}
+
+		return items.slice(0, 16);
+	}, [movieByEntryId, recentsData, seriesByEntryId]);
+
+	const openMovieDetails = (movie: GroupedMovieDto) => {
+		if (!mac) return;
+		const params = new URLSearchParams({
+			mac,
+			title: movie.title,
+		});
+		router.push(`/movies/details?${params.toString()}`);
+	};
+
+	const openSeriesDetails = (series: GroupedSeriesDto) => {
+		if (!mac) return;
+		const params = new URLSearchParams({
+			mac,
+			title: series.title,
+		});
+		router.push(`/series/details?${params.toString()}`);
+	};
+
+	const openRecent = (recent: RecentHomeItem) => {
+		if (recent.category === "VOD") {
+			const matched = movieByEntryId.get(recent.entryId);
+			if (matched) {
+				openMovieDetails(matched.movie);
+			}
+			return;
+		}
+
+		const matched = seriesByEntryId.get(recent.entryId);
+		if (matched) {
+			openSeriesDetails(matched.series);
+		}
+	};
+
+	return (
+		<LayoutShell activeSidebarItem="home">
+			<main className="flex-1 flex flex-col h-full relative overflow-hidden bg-background">
+				<div className="flex-1 overflow-y-auto p-6 scroll-smooth">
+					<div className="space-y-10">
+						<section>
+							<div className="mb-4 flex items-center justify-between">
+								<h2 className="text-xl font-semibold tracking-tight">
+									Recentes
+								</h2>
+							</div>
+
+							{recentsError instanceof Error ? (
+								<div className="text-sm text-destructive">
+									{recentsError.message}
+								</div>
+							) : null}
+
+							{isRecentsPending ? (
+								<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-x-4 gap-y-8">
+									{Array.from({ length: 8 }).map((_, index) => (
+										<div
+											className="flex flex-col gap-2"
+											key={`recents-skeleton-${index}`}
+										>
+											<Skeleton className="aspect-2/3 w-full rounded-xl" />
+											<div className="space-y-2">
+												<Skeleton className="h-4 w-4/5" />
+												<Skeleton className="h-3 w-3/5" />
+											</div>
+										</div>
+									))}
+								</div>
+							) : recents.length === 0 ? (
+								<Card className="border border-dashed border-border/70 bg-muted/20 p-6 text-sm text-muted-foreground">
+									Nenhum item recente encontrado.
+								</Card>
+							) : (
+								<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-x-4 gap-y-8">
+									{recents.map((recent) => (
+										<Card
+											className="movie-card cursor-pointer group flex flex-col gap-2 outline-none border-none bg-transparent shadow-none"
+											key={`recent-${recent.entryId}`}
+											onClick={() => openRecent(recent)}
+											onKeyDown={(event) => {
+												if (event.key === "Enter" || event.key === " ") {
+													event.preventDefault();
+													openRecent(recent);
+												}
+											}}
+											role="button"
+											tabIndex={0}
+										>
+											<div className="movie-poster-container bg-muted">
+												<CatalogImage
+													alt={recent.title}
+													className="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105"
+													fill
+													loading="lazy"
+													sizes="(min-width: 1536px) 12.5vw, (min-width: 1280px) 16.66vw, (min-width: 1024px) 20vw, (min-width: 768px) 25vw, (min-width: 640px) 33.33vw, 50vw"
+													src={recent.logo}
+												/>
+
+												<div className="absolute top-2 left-2">
+													<Badge
+														className="bg-green-600/90 text-white border-white/10 uppercase tracking-wider"
+														variant="outline"
+													>
+														Retomar
+													</Badge>
+												</div>
+
+												<div className="absolute top-2 right-2">
+													<Badge
+														className="bg-black/80 text-white border-white/10 uppercase tracking-wider"
+														variant="outline"
+													>
+														{recent.category === "VOD" ? "Filme" : "Série"}
+													</Badge>
+												</div>
+
+												{recent.progressSeconds > 0 ? (
+													<div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
+														<div
+															className="h-full bg-primary"
+															style={{
+																width: `${Math.min(100, Math.max(8, Math.floor(recent.progressSeconds / 45)))}%`,
+															}}
+														/>
+													</div>
+												) : null}
+											</div>
+
+											<div className="flex flex-col">
+												<h3 className="font-medium text-sm leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors group-focus:text-primary">
+													{recent.title}
+												</h3>
+												<p className="text-xs text-muted-foreground truncate mt-0.5">
+													{recent.subtitle}
+												</p>
+											</div>
+										</Card>
+									))}
+								</div>
+							)}
+						</section>
+
+						<section>
+							<div className="mb-4 flex items-center justify-between">
+								<h2 className="text-xl font-semibold tracking-tight">Filmes</h2>
+							</div>
+
+							{moviesError instanceof Error ? (
+								<div className="text-sm text-destructive">
+									{moviesError.message}
+								</div>
+							) : null}
+
+							{isMoviesPending ? (
+								<div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
+									{Array.from({ length: 8 }).map((_, index) => (
+										<div
+											className="flex flex-col gap-2"
+											key={`home-movies-skeleton-${index}`}
+										>
+											<Skeleton className="aspect-2/3 w-full rounded-xl" />
+											<div className="space-y-2">
+												<Skeleton className="h-4 w-4/5" />
+												<Skeleton className="h-3 w-3/5" />
+											</div>
+										</div>
+									))}
+								</div>
+							) : (
+								<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-x-4 gap-y-8">
+									{movies.map((movie) => {
+										const firstVariant = movie.variants[0];
+										const hasLegendado = movie.variants.some(
+											(variant) => variant.isLegendado,
+										);
+
+										return (
+											<Card
+												className="movie-card cursor-pointer group flex flex-col gap-2 outline-none border-none bg-transparent shadow-none"
+												key={`home-movie-${movie.title}`}
+												onClick={() => openMovieDetails(movie)}
+												onKeyDown={(event) => {
+													if (event.key === "Enter" || event.key === " ") {
+														event.preventDefault();
+														openMovieDetails(movie);
+													}
+												}}
+												role="button"
+												tabIndex={0}
+											>
+												<div className="movie-poster-container bg-muted">
+													<CatalogImage
+														alt={movie.title}
+														className="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105"
+														fill
+														loading="lazy"
+														sizes="(min-width: 1536px) 12.5vw, (min-width: 1280px) 16.66vw, (min-width: 1024px) 20vw, (min-width: 768px) 25vw, (min-width: 640px) 33.33vw, 50vw"
+														src={firstVariant?.tvgLogo}
+													/>
+
+													{hasLegendado ? (
+														<div className="absolute top-2 left-2">
+															<Badge
+																className="bg-yellow-500/90 text-black uppercase tracking-wider"
+																variant="outline"
+															>
+																[L]
+															</Badge>
+														</div>
+													) : null}
+												</div>
+
+												<div className="flex flex-col">
+													<h3 className="font-medium text-sm leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors group-focus:text-primary">
+														{movie.title}
+													</h3>
+													<p className="text-xs text-muted-foreground truncate mt-0.5">
+														{firstVariant?.groupTitle ?? "Sem grupo"}
+													</p>
+												</div>
+											</Card>
+										);
+									})}
+								</div>
+							)}
+						</section>
+
+						<section>
+							<div className="mb-4 flex items-center justify-between">
+								<h2 className="text-xl font-semibold tracking-tight">Séries</h2>
+							</div>
+
+							{seriesError instanceof Error ? (
+								<div className="text-sm text-destructive">
+									{seriesError.message}
+								</div>
+							) : null}
+
+							{isSeriesPending ? (
+								<div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
+									{Array.from({ length: 8 }).map((_, index) => (
+										<div
+											className="flex flex-col gap-2"
+											key={`home-series-skeleton-${index}`}
+										>
+											<Skeleton className="aspect-2/3 w-full rounded-xl" />
+											<div className="space-y-2">
+												<Skeleton className="h-4 w-4/5" />
+												<Skeleton className="h-3 w-3/5" />
+											</div>
+										</div>
+									))}
+								</div>
+							) : (
+								<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-x-4 gap-y-8">
+									{seriesList.map((series) => {
+										const firstEpisode = series.seasons[0]?.episodes[0];
+										const totalEpisodes = countEpisodes(series);
+
+										return (
+											<Card
+												className="movie-card cursor-pointer group flex flex-col gap-2 outline-none border-none bg-transparent shadow-none"
+												key={`home-series-${series.title}`}
+												onClick={() => openSeriesDetails(series)}
+												onKeyDown={(event) => {
+													if (event.key === "Enter" || event.key === " ") {
+														event.preventDefault();
+														openSeriesDetails(series);
+													}
+												}}
+												role="button"
+												tabIndex={0}
+											>
+												<div className="movie-poster-container bg-muted">
+													<CatalogImage
+														alt={series.title}
+														className="movie-poster transition-transform duration-300 group-hover:scale-105 group-focus:scale-105"
+														fill
+														loading="lazy"
+														sizes="(min-width: 1536px) 12.5vw, (min-width: 1280px) 16.66vw, (min-width: 1024px) 20vw, (min-width: 768px) 25vw, (min-width: 640px) 33.33vw, 50vw"
+														src={firstEpisode?.tvgLogo}
+													/>
+
+													<div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+														<Badge
+															className="bg-black/80 text-white border-white/10 uppercase tracking-wider"
+															variant="outline"
+														>
+															{series.seasons.length}T
+														</Badge>
+														<Badge
+															className="bg-blue-600/90 text-white border-white/10 uppercase tracking-wider"
+															variant="outline"
+														>
+															{totalEpisodes}E
+														</Badge>
+													</div>
+												</div>
+
+												<div className="flex flex-col">
+													<h3 className="font-medium text-sm leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors group-focus:text-primary">
+														{series.title}
+													</h3>
+													<p className="text-xs text-muted-foreground truncate mt-0.5">
+														{firstEpisode?.groupTitle ?? "Sem grupo"}
+													</p>
+												</div>
+											</Card>
+										);
+									})}
+								</div>
+							)}
+						</section>
+					</div>
+				</div>
 			</main>
-		</div>
+		</LayoutShell>
 	);
 }

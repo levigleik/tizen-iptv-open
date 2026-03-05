@@ -1,18 +1,29 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 
 import { QueryProvider } from "@/components/providers/query-provider";
+import { TvRemoteNavigationProvider } from "@/components/providers/tv-remote-navigation-provider";
+import { Toaster } from "@/components/ui/sonner";
+import {
+	Montserrat,
+	Playfair_Display,
+	Source_Code_Pro,
+} from "next/font/google";
 
 import "./globals.css";
 
-const geistSans = Geist({
-	variable: "--font-geist-sans",
+const fontSans = Montserrat({
 	subsets: ["latin"],
+	variable: "--font-sans",
 });
 
-const geistMono = Geist_Mono({
-	variable: "--font-geist-mono",
+const fontSerif = Playfair_Display({
 	subsets: ["latin"],
+	variable: "--font-serif",
+});
+
+const fontMono = Source_Code_Pro({
+	subsets: ["latin"],
+	variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
@@ -26,11 +37,22 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="pt-BR" className="dark">
+		<html lang="pt-BR" suppressHydrationWarning>
+			<head>
+				<link
+					href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+					rel="stylesheet"
+				/>
+			</head>
 			<body
-				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+				className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} antialiased`}
 			>
-				<QueryProvider>{children}</QueryProvider>
+				<QueryProvider>
+					<TvRemoteNavigationProvider>
+						{children}
+						<Toaster position="bottom-right" richColors />
+					</TvRemoteNavigationProvider>
+				</QueryProvider>
 			</body>
 		</html>
 	);

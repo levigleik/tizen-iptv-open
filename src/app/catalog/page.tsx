@@ -14,6 +14,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTvRemote } from "@/hooks/use-tv-remote";
 import {
@@ -22,6 +23,7 @@ import {
 	fetchGroupedMoviesPage,
 	fetchGroupedSeriesPage,
 } from "@/lib/iptv";
+import { useAppSettingsStore } from "@/lib/settings-store";
 import type {
 	CatalogCategory,
 	DisplayItem,
@@ -130,6 +132,7 @@ function CatalogContent() {
 	const [selectedGroupTitle, setSelectedGroupTitle] = useState("");
 	const [focusedContentIndex, setFocusedContentIndex] = useState(0);
 	const [hasRestoredState, setHasRestoredState] = useState(false);
+	const adult = useAppSettingsStore((state) => state.adult);
 
 	useEffect(() => {
 		const restoredPage = Number(searchParams.get("page") ?? "1");
@@ -173,6 +176,7 @@ function CatalogContent() {
 			perPage,
 			search,
 			selectedGroupTitle,
+			adult,
 		],
 		enabled: Boolean(queryMac && category),
 		queryFn: ({ signal }) => {
@@ -183,6 +187,7 @@ function CatalogContent() {
 					queryMac,
 					page,
 					perPage,
+					adult,
 					search,
 					selectedGroupTitle,
 					signal,
@@ -194,6 +199,7 @@ function CatalogContent() {
 					queryMac,
 					page,
 					perPage,
+					adult,
 					search,
 					selectedGroupTitle,
 					signal,
@@ -204,6 +210,7 @@ function CatalogContent() {
 				queryMac,
 				page,
 				perPage,
+				adult,
 				search,
 				selectedGroupTitle,
 				signal,
@@ -212,11 +219,11 @@ function CatalogContent() {
 	});
 
 	const { data: categoryList } = useQuery<{ data: string[] }>({
-		queryKey: ["catalog-groups", queryMac, category],
+		queryKey: ["catalog-groups", queryMac, category, adult],
 		enabled: Boolean(queryMac && category),
 		queryFn: ({ signal }) => {
 			if (!category) throw new Error("Categoria inválida");
-			return fetchGroupedCategoryList(queryMac, category, signal);
+			return fetchGroupedCategoryList(queryMac, category, adult, signal);
 		},
 	});
 
@@ -400,12 +407,12 @@ function CatalogContent() {
 					}}
 					className="flex flex-wrap items-center gap-2"
 				>
-					<input
+					<Input
 						type="text"
 						value={searchInput}
 						onChange={(event) => setSearchInput(event.target.value)}
 						placeholder="Buscar por nome"
-						className="h-10 min-w-60 rounded-md border border-input bg-background px-3 text-sm"
+						className="min-w-60"
 					/>
 					<Button type="submit" variant="outline">
 						Buscar
