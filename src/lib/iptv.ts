@@ -24,7 +24,10 @@ export function getApiBaseUrl(): string {
 	const configured = getConfiguredApiBaseUrl();
 
 	if (typeof window !== "undefined") {
-		if (window.location.protocol === "https:" && configured?.startsWith("http://")) {
+		if (
+			window.location.protocol === "https:" &&
+			configured?.startsWith("http://")
+		) {
 			return DEFAULT_API_BASE_URL;
 		}
 	}
@@ -80,7 +83,10 @@ function buildGroupedCategoryListUrl(
 
 function toAbsoluteApiUrl(url: string): string {
 	if (/^https?:\/\//i.test(url)) {
-		if (typeof window !== "undefined" && window.location.protocol === "https:") {
+		if (
+			typeof window !== "undefined" &&
+			window.location.protocol === "https:"
+		) {
 			const configured = getConfiguredApiBaseUrl() ?? FALLBACK_UPSTREAM;
 
 			try {
