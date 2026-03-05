@@ -17,7 +17,11 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchGroupedSeriesPage, fetchRecents } from "@/lib/iptv";
+import {
+	buildMediaProxyUrl,
+	fetchGroupedSeriesPage,
+	fetchRecents,
+} from "@/lib/iptv";
 import { useAppSettingsStore } from "@/lib/settings-store";
 import type { GroupedSeriesEpisodeDto } from "@/types/iptv";
 
@@ -187,12 +191,13 @@ export default function SeriesDetailsPage() {
 		episode: GroupedSeriesEpisodeDto,
 		options?: { startFromBeginning?: boolean },
 	) => {
+		const mediaUrl = buildMediaProxyUrl(mac, episode.id);
 		const params = new URLSearchParams({
 			mac,
 			entryId: String(episode.id),
 			resume: options?.startFromBeginning ? "0" : "1",
 			title: episode.rawTitle,
-			streamUrl: episode.streamUrl,
+			streamUrl: mediaUrl,
 			groupTitle: episode.groupTitle,
 			quality: "",
 			isLegendado: "0",

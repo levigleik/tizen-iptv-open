@@ -182,6 +182,39 @@ export default function ChannelsPage() {
 		router.push(`/channels/details?${params.toString()}`);
 	};
 
+	useEffect(() => {
+		if (!hasNextPage || isFetchingNextPage) return;
+
+		const handleFocusIn = (event: FocusEvent) => {
+			if (isFetchingNextPage || !hasNextPage) return;
+
+			const target = event.target;
+			if (!(target instanceof HTMLElement)) return;
+			if (target.dataset.catalogItem !== "true") return;
+
+			const grid = target.closest("[data-catalog-grid='true']");
+			if (!(grid instanceof HTMLElement)) return;
+
+			const items = Array.from(
+				grid.querySelectorAll<HTMLElement>("[data-catalog-item='true']"),
+			);
+			if (items.length === 0) return;
+
+			const focusedTop = target.getBoundingClientRect().top;
+			const lastRowTop = items.reduce((maxTop, item) => {
+				return Math.max(maxTop, item.getBoundingClientRect().top);
+			}, Number.NEGATIVE_INFINITY);
+
+			if (focusedTop < lastRowTop - 4) return;
+			void fetchNextPage();
+		};
+
+		document.addEventListener("focusin", handleFocusIn);
+		return () => {
+			document.removeEventListener("focusin", handleFocusIn);
+		};
+	}, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
 	return (
 		<LayoutShell activeSidebarItem="live-tv">
 			<main className="flex-1 flex flex-col h-full relative overflow-hidden bg-background">
@@ -269,8 +302,11 @@ export default function ChannelsPage() {
 								))}
 							</div>
 						) : (
-							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-								{channels.map((channel) => {
+							<div
+								className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4"
+								data-catalog-grid="true"
+							>
+								{channels.map((channel, index) => {
 									const firstVariant = channel.variants[0];
 									const tags = unique(
 										channel.variants.flatMap((variant) => variant.qualityTags),
@@ -285,6 +321,10 @@ export default function ChannelsPage() {
 									return (
 										<Card
 											className="group cursor-pointer relative flex flex-col border border-border/50 p-4 text-left transition-all h-36"
+											data-catalog-item="true"
+											data-initial-focus={
+												index === 0 ? "catalog-item" : undefined
+											}
 											key={channel.title}
 											onClick={() => openChannelDetails(channel)}
 											onKeyDown={(event) => {
@@ -370,23 +410,12 @@ export default function ChannelsPage() {
 							</div>
 						)}
 
-						<div className="py-12 flex justify-center w-full">
-							<Button
-								variant="outline"
-								disabled={!hasNextPage || isFetchingNextPage}
-								onClick={() => {
-									void fetchNextPage();
-								}}
-								type="button"
-							>
-								{isFetchingNextPage ? (
-									<Skeleton className="h-4 w-24 bg-background/60" />
-								) : hasNextPage ? (
-									"Carregar Mais"
-								) : (
-									"Fim"
-								)}
-							</Button>
+						<div className="py-6 text-center text-xs text-muted-foreground">
+							{isFetchingNextPage
+								? "Carregando mais títulos..."
+								: hasNextPage
+									? "Role com as setas até a última linha para carregar mais"
+									: "Fim do catálogo"}
 						</div>
 					</div>
 				</div>

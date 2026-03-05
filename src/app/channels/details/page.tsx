@@ -428,7 +428,7 @@ export default function ChannelDetailsPage() {
 											{startWatchMutation.error.message}
 										</div>
 									) : null}
-									{channel.variants.map((variant) => {
+									{channel.variants.map((variant, index) => {
 										const tags = unique(variant.qualityTags);
 										const hasVariantEpg = (variant.epg?.length ?? 0) > 0;
 										const isStarting =
@@ -438,6 +438,9 @@ export default function ChannelDetailsPage() {
 											<Card className="border-border/50" key={variant.id}>
 												<Button
 													className="h-auto w-full justify-start rounded-xl p-4 text-left gap-4"
+													data-initial-focus={
+														index === 0 ? "variant" : undefined
+													}
 													disabled={startWatchMutation.isPending}
 													onClick={() => {
 														void openWatch(variant);

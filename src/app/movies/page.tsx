@@ -11,7 +11,6 @@ import { CatalogImage } from "@/components/iptv/catalog-image";
 import { CatalogNavbar } from "@/components/iptv/catalog-navbar";
 import { LayoutShell } from "@/components/iptv/layout-shell";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
@@ -189,6 +188,39 @@ export default function MoviesPage() {
 		router.push(`/movies/details?${params.toString()}`);
 	};
 
+	useEffect(() => {
+		if (!hasNextPage || isFetchingNextPage) return;
+
+		const handleFocusIn = (event: FocusEvent) => {
+			if (isFetchingNextPage || !hasNextPage) return;
+
+			const target = event.target;
+			if (!(target instanceof HTMLElement)) return;
+			if (target.dataset.catalogItem !== "true") return;
+
+			const grid = target.closest("[data-catalog-grid='true']");
+			if (!(grid instanceof HTMLElement)) return;
+
+			const items = Array.from(
+				grid.querySelectorAll<HTMLElement>("[data-catalog-item='true']"),
+			);
+			if (items.length === 0) return;
+
+			const focusedTop = target.getBoundingClientRect().top;
+			const lastRowTop = items.reduce((maxTop, item) => {
+				return Math.max(maxTop, item.getBoundingClientRect().top);
+			}, Number.NEGATIVE_INFINITY);
+
+			if (focusedTop < lastRowTop - 4) return;
+			void fetchNextPage();
+		};
+
+		document.addEventListener("focusin", handleFocusIn);
+		return () => {
+			document.removeEventListener("focusin", handleFocusIn);
+		};
+	}, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
 	return (
 		<LayoutShell activeSidebarItem="movies">
 			<main className="flex-1 flex flex-col h-full relative overflow-hidden bg-background">
@@ -241,8 +273,11 @@ export default function MoviesPage() {
 							))}
 						</div>
 					) : (
-						<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-x-4 gap-y-8">
-							{movies.map((movie) => {
+						<div
+							className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-x-4 gap-y-8"
+							data-catalog-grid="true"
+						>
+							{movies.map((movie, index) => {
 								const firstVariant = movie.variants[0];
 								const tags = unique(
 									movie.variants.flatMap((variant) => variant.qualityTags),
@@ -262,6 +297,10 @@ export default function MoviesPage() {
 								return (
 									<Card
 										className="movie-card cursor-pointer group flex flex-col gap-2 outline-none border-none bg-transparent shadow-none"
+										data-catalog-item="true"
+										data-initial-focus={
+											index === 0 ? "catalog-item" : undefined
+										}
 										key={movie.title}
 										onClick={() => openMovieDetails(movie)}
 										onKeyDown={(event) => {
@@ -354,23 +393,12 @@ export default function MoviesPage() {
 						</div>
 					)}
 
-					<div className="py-12 flex justify-center w-full">
-						<Button
-							variant="outline"
-							disabled={!hasNextPage || isFetchingNextPage}
-							onClick={() => {
-								void fetchNextPage();
-							}}
-							type="button"
-						>
-							{isFetchingNextPage ? (
-								<Skeleton className="h-4 w-24 bg-background/60" />
-							) : hasNextPage ? (
-								"Carregar Mais"
-							) : (
-								"Fim"
-							)}
-						</Button>
+					<div className="py-6 text-center text-xs text-muted-foreground">
+						{isFetchingNextPage
+							? "Carregando mais títulos..."
+							: hasNextPage
+								? "Role com as setas até a última linha para carregar mais"
+								: "Fim do catálogo"}
 					</div>
 				</div>
 			</main>

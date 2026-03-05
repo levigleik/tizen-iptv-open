@@ -16,7 +16,11 @@ import {
 } from "@/components/ui/card";
 import { LoadingSpinner } from "@/components/ui/loading";
 import { useTvRemote } from "@/hooks/use-tv-remote";
-import { fetchGroupedCategoryPage, startChannelWatchSession } from "@/lib/iptv";
+import {
+	buildMediaProxyUrl,
+	fetchGroupedCategoryPage,
+	startChannelWatchSession,
+} from "@/lib/iptv";
 import { useAppSettingsStore } from "@/lib/settings-store";
 import type {
 	CatalogCategory,
@@ -141,6 +145,7 @@ function PreviewContent() {
 		isLegendado: boolean;
 	}) => {
 		const params = new URLSearchParams({
+			mac,
 			...(typeof payload.entryId === "number"
 				? { entryId: String(payload.entryId) }
 				: {}),
@@ -159,7 +164,7 @@ function PreviewContent() {
 		const streamUrl =
 			category === "channels"
 				? await startWatchMutation.mutateAsync(variant)
-				: variant.streamUrl;
+				: buildMediaProxyUrl(mac, variant.id);
 
 		openWatch({
 			entryId: category === "channels" ? undefined : variant.id,
@@ -175,7 +180,7 @@ function PreviewContent() {
 		openWatch({
 			entryId: episode.id,
 			title: episode.rawTitle,
-			streamUrl: episode.streamUrl,
+			streamUrl: buildMediaProxyUrl(mac, episode.id),
 			groupTitle: episode.groupTitle,
 			qualityTags: [],
 			isLegendado: false,

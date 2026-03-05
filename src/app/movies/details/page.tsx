@@ -10,7 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchGroupedMoviesPage, fetchRecents } from "@/lib/iptv";
+import {
+	buildMediaProxyUrl,
+	fetchGroupedMoviesPage,
+	fetchRecents,
+} from "@/lib/iptv";
 import { useAppSettingsStore } from "@/lib/settings-store";
 import type { GroupedEntryVariantDto } from "@/types/iptv";
 
@@ -109,12 +113,13 @@ export default function MovieDetailsPage() {
 		variant: GroupedEntryVariantDto,
 		options?: { startFromBeginning?: boolean },
 	) => {
+		const mediaUrl = buildMediaProxyUrl(mac, variant.id);
 		const params = new URLSearchParams({
 			mac,
 			entryId: String(variant.id),
 			resume: options?.startFromBeginning ? "0" : "1",
 			title: variant.rawTitle,
-			streamUrl: variant.streamUrl,
+			streamUrl: mediaUrl,
 			groupTitle: variant.groupTitle,
 			quality: variant.qualityTags.join(","),
 			isLegendado: variant.isLegendado ? "1" : "0",
@@ -224,7 +229,7 @@ export default function MovieDetailsPage() {
 								</div>
 
 								<div className="space-y-3">
-									{movie.variants.map((variant) => {
+									{movie.variants.map((variant, index) => {
 										const tags = unique(variant.qualityTags);
 										const progressSeconds =
 											progressByVariantId.get(variant.id) ?? 0;
@@ -283,6 +288,9 @@ export default function MovieDetailsPage() {
 													<div className="flex flex-wrap gap-2">
 														{hasProgress ? (
 															<Button
+																data-initial-focus={
+																	index === 0 ? "variant" : undefined
+																}
 																onClick={() => openWatch(variant)}
 																type="button"
 															>
@@ -290,6 +298,11 @@ export default function MovieDetailsPage() {
 															</Button>
 														) : null}
 														<Button
+															data-initial-focus={
+																index === 0 && !hasProgress
+																	? "variant"
+																	: undefined
+															}
 															onClick={() =>
 																openWatch(variant, { startFromBeginning: true })
 															}
