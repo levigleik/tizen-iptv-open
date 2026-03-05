@@ -27,8 +27,37 @@ const fontMono = Source_Code_Pro({
 });
 
 export const metadata: Metadata = {
-	title: "IPTV Open Tizen",
-	description: "Cliente IPTV para Tizen com Next.js e shadcn/ui",
+	title: {
+		default: "Tizen Open IPTV",
+		template: "%s | Tizen Open IPTV",
+	},
+	description: "Site/app de IPTV open source para Tizen OS 3+.",
+	applicationName: "Tizen Open IPTV",
+	keywords: ["IPTV", "Tizen", "Tizen OS 3+", "Open Source", "Player"],
+	creator: "Tizen Open IPTV",
+	publisher: "Tizen Open IPTV",
+	openGraph: {
+		title: "Tizen Open IPTV",
+		description: "Site/app de IPTV open source para Tizen OS 3+.",
+		siteName: "Tizen Open IPTV",
+		locale: "pt_BR",
+		type: "website",
+	},
+	twitter: {
+		card: "summary",
+		title: "Tizen Open IPTV",
+		description: "Site/app de IPTV open source para Tizen OS 3+.",
+	},
+	icons: {
+		icon: [
+			{ url: "/favicon.ico", sizes: "any" },
+			{ url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+			{ url: "/icon-512.png", type: "image/png", sizes: "512x512" },
+			{ url: "/icon.svg", type: "image/svg+xml" },
+		],
+		shortcut: "/favicon.ico",
+		apple: "/apple-icon.png",
+	},
 };
 
 export default function RootLayout({
