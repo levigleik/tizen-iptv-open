@@ -350,7 +350,7 @@ function ChannelDetailsPageContent() {
 	});
 
 	const openWatch = async (variant: GroupedEntryVariantDto) => {
-		const streamUrl = await startWatchMutation.mutateAsync(variant);
+		// const streamUrl = await startWatchMutation.mutateAsync(variant);
 		const params = new URLSearchParams({
 			title: variant.rawTitle,
 			streamUrl: variant.streamUrl,
