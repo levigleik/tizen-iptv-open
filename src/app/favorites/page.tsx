@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { CatalogImage } from "@/components/iptv/catalog-image";
 import { LayoutShell } from "@/components/iptv/layout-shell";
+import { MobileSidebarToggle } from "@/components/iptv/mobile-sidebar-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +22,64 @@ type FavoriteCatalogItem = {
 	logo?: string | null;
 	streamType: StreamType;
 };
+
+function resolveFavoriteTitle(item: unknown, entryId: number): string {
+	if (typeof item !== "object" || item === null) {
+		return `Item ${entryId}`;
+	}
+
+	const payload = item as {
+		m3uEntry?: {
+			title?: string;
+			rawTitle?: string;
+			tvgName?: string;
+		};
+		title?: string;
+		rawTitle?: string;
+		name?: string;
+	};
+
+	return (
+		payload.m3uEntry?.title ??
+		payload.m3uEntry?.rawTitle ??
+		payload.m3uEntry?.tvgName ??
+		payload.title ??
+		payload.rawTitle ??
+		payload.name ??
+		`Item ${entryId}`
+	);
+}
+
+function resolveFavoriteGroupTitle(item: unknown): string | undefined {
+	if (typeof item !== "object" || item === null) {
+		return undefined;
+	}
+
+	const payload = item as {
+		m3uEntry?: {
+			groupTitle?: string;
+		};
+		groupTitle?: string;
+	};
+
+	return payload.m3uEntry?.groupTitle ?? payload.groupTitle;
+}
+
+function resolveFavoriteLogo(item: unknown): string | null | undefined {
+	if (typeof item !== "object" || item === null) {
+		return undefined;
+	}
+
+	const payload = item as {
+		m3uEntry?: {
+			tvgLogo?: string | null;
+		};
+		tvgLogo?: string | null;
+		logo?: string | null;
+	};
+
+	return payload.m3uEntry?.tvgLogo ?? payload.tvgLogo ?? payload.logo;
+}
 
 function normalizeStreamType(value?: string | null): StreamType {
 	const type = value?.trim().toUpperCase();
@@ -62,10 +121,9 @@ export default function FavoritesPage() {
 					item.streamType ??
 					item.type,
 			);
-			const title =
-				item.m3uEntry?.title ?? item.m3uEntry?.rawTitle ?? `Item ${entryId}`;
+			const title = resolveFavoriteTitle(item, entryId);
 			const subtitle =
-				item.m3uEntry?.groupTitle ??
+				resolveFavoriteGroupTitle(item) ??
 				(streamType === "LIVE"
 					? "Canal"
 					: streamType === "VOD"
@@ -77,7 +135,7 @@ export default function FavoritesPage() {
 				entryId,
 				title,
 				subtitle,
-				logo: item.m3uEntry?.tvgLogo,
+				logo: resolveFavoriteLogo(item),
 				streamType,
 			};
 
@@ -96,7 +154,11 @@ export default function FavoritesPage() {
 	}, [favoritesData]);
 
 	const openDetails = (item: FavoriteCatalogItem) => {
-		const params = new URLSearchParams({ mac, title: item.title });
+		const params = new URLSearchParams({
+			mac,
+			title: item.title,
+			entryId: String(item.entryId),
+		});
 		if (item.streamType === "LIVE") {
 			router.push(`/channels/details?${params.toString()}`);
 			return;
@@ -197,7 +259,8 @@ export default function FavoritesPage() {
 	return (
 		<LayoutShell activeSidebarItem="favorites">
 			<main className="flex-1 flex flex-col h-full relative overflow-hidden bg-background">
-				<header className="h-20 shrink-0 border-b border-border/50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 flex items-center px-6 z-10 sticky top-0">
+				<header className="h-20 shrink-0 border-b border-border/50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 flex items-center gap-4 px-6 z-10 sticky top-0">
+					<MobileSidebarToggle />
 					<h1 className="text-2xl font-bold tracking-tight">Favoritos</h1>
 				</header>
 

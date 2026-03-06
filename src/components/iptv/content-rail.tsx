@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { DisplayItem } from "@/types/iptv";
 
@@ -23,12 +24,13 @@ export function ContentRail({
 				const isFocused = focusedIndex === index;
 
 				return (
-					<button
+					<Button
 						type="button"
 						key={`${item.id}-${item.rawTitle}`}
 						onClick={() => onSelect(item)}
 						onFocus={() => onFocus(index)}
-						className="text-left"
+						className="h-auto w-full justify-start whitespace-normal border-0 bg-transparent p-0 text-left hover:bg-transparent"
+						variant="icon"
 					>
 						<Card
 							className={[
@@ -67,7 +69,7 @@ export function ContentRail({
 								</div>
 							</CardContent>
 						</Card>
-					</button>
+					</Button>
 				);
 			})}
 		</div>

@@ -1,24 +1,36 @@
 "use client";
 
 import {
+	useMutation,
 	useInfiniteQuery,
 	useIsFetching,
+	useQueryClient,
 	useQuery,
 } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { CatalogImage } from "@/components/iptv/catalog-image";
 import { CatalogNavbar } from "@/components/iptv/catalog-navbar";
 import { LayoutShell } from "@/components/iptv/layout-shell";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import {
+	addFavorite,
+	fetchFavorites,
 	fetchGroupedCategoryList,
 	fetchGroupedSeriesPage,
 	fetchRecents,
+	removeFavorite,
 } from "@/lib/iptv";
+import {
+	getSeriesAnchorEntryId,
+	getSeriesKeyFromFavoriteEntry,
+	getSeriesKeyFromSeriesItem,
+} from "@/lib/series-favorites";
 import { useAppSettingsStore } from "@/lib/settings-store";
 import { resolveMacAddress } from "@/lib/tizen";
 import type { GroupedSeriesDto } from "@/types/iptv";
@@ -43,12 +55,15 @@ function SeriesPageContent() {
 	const [mac, setMac] = useState("");
 	const [selectedGroupTitle, setSelectedGroupTitle] =
 		useState(initialGroupTitle);
+	const longPressHandledRef = useRef(false);
 	const [sortMode, setSortMode] = useState<SortMode>(
 		["default", "title-asc", "title-desc"].includes(initialSort)
 			? initialSort
 			: "default",
 	);
 	const adult = useAppSettingsStore((state) => state.adult);
+	const queryClient = useQueryClient();
+	const favoritesQueryKey = ["favorites", "series", mac] as const;
 	const isSearchFetching =
 		useIsFetching({
 			queryKey: ["series-grouped", mac],
@@ -120,6 +135,46 @@ function SeriesPageContent() {
 		queryFn: ({ signal }) => fetchRecents(mac, 50, signal),
 	});
 
+	const { data: favoritesData } = useQuery({
+		queryKey: favoritesQueryKey,
+		enabled: Boolean(mac),
+		queryFn: ({ signal }) => fetchFavorites(mac, 200, signal, ["SERIES"]),
+	});
+
+	const addFavoriteMutation = useMutation({
+		mutationFn: (entryId: number) => addFavorite(mac, entryId),
+		onSuccess: (favorite) => {
+			queryClient.setQueryData(favoritesQueryKey, (current: unknown) => {
+				const list = Array.isArray(current) ? current : [];
+				const exists = list.some(
+					(item) =>
+						typeof item === "object" &&
+						item !== null &&
+						"m3uEntryId" in item &&
+						(item as { m3uEntryId?: number }).m3uEntryId ===
+							favorite.m3uEntryId,
+				);
+
+				if (exists) return list;
+				return [favorite, ...list];
+			});
+		},
+	});
+
+	const removeFavoriteMutation = useMutation({
+		mutationFn: (entryId: number) => removeFavorite(mac, entryId),
+		onSuccess: (_removed, entryId) => {
+			queryClient.setQueryData(favoritesQueryKey, (current: unknown) => {
+				const list = Array.isArray(current) ? current : [];
+				return list.filter((item) => {
+					if (typeof item !== "object" || item === null) return true;
+					if (!("m3uEntryId" in item)) return true;
+					return (item as { m3uEntryId?: number }).m3uEntryId !== entryId;
+				});
+			});
+		},
+	});
+
 	const {
 		data,
 		error,
@@ -148,6 +203,9 @@ function SeriesPageContent() {
 	});
 
 	const groups = groupsResponse?.data ?? [];
+	const favoriteSeriesKeys = useMemo(() => {
+		return new Set((favoritesData ?? []).map(getSeriesKeyFromFavoriteEntry));
+	}, [favoritesData]);
 	const isSearchLoading = isPending || isOptimisticLoading;
 	const seriesList = useMemo(() => {
 		const merged = data?.pages.flatMap((page) => page.data) ?? [];
@@ -183,6 +241,42 @@ function SeriesPageContent() {
 		router.push(`/series/details?${params.toString()}`);
 	};
 
+	const toggleSeriesFavorite = async (series: GroupedSeriesDto) => {
+		if (!mac) return;
+
+		const seriesKey = getSeriesKeyFromSeriesItem(series);
+		const matchingFavorites = (favoritesData ?? []).filter(
+			(favorite) => getSeriesKeyFromFavoriteEntry(favorite) === seriesKey,
+		);
+		const isFavorite = matchingFavorites.length > 0;
+
+		try {
+			if (isFavorite) {
+				await Promise.all(
+					matchingFavorites.map((favorite) =>
+						removeFavoriteMutation.mutateAsync(favorite.m3uEntryId),
+					),
+				);
+				toast.success("Série removida dos favoritos", {
+					description: series.title,
+				});
+				return;
+			}
+
+			const anchorEntryId = getSeriesAnchorEntryId(series);
+			if (!anchorEntryId) return;
+
+			await addFavoriteMutation.mutateAsync(anchorEntryId);
+			toast.success("Série adicionada aos favoritos", {
+				description: series.title,
+			});
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Não foi possível favoritar";
+			toast.error(message);
+		}
+	};
+
 	useEffect(() => {
 		if (!hasNextPage || isFetchingNextPage) return;
 
@@ -215,6 +309,17 @@ function SeriesPageContent() {
 			document.removeEventListener("focusin", handleFocusIn);
 		};
 	}, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+	useEffect(() => {
+		const handleKeyUp = (event: KeyboardEvent) => {
+			if (event.key === "Enter" || event.key === " ") {
+				longPressHandledRef.current = false;
+			}
+		};
+
+		window.addEventListener("keyup", handleKeyUp, true);
+		return () => window.removeEventListener("keyup", handleKeyUp, true);
+	}, []);
 
 	return (
 		<LayoutShell activeSidebarItem="series">
@@ -274,6 +379,8 @@ function SeriesPageContent() {
 						>
 							{seriesList.map((series, index) => {
 								const firstEpisode = series.seasons[0]?.episodes[0];
+								const seriesKey = getSeriesKeyFromSeriesItem(series);
+								const isFavorite = favoriteSeriesKeys.has(seriesKey);
 								const totalEpisodes = countEpisodes(series);
 								const hasProgress = series.seasons.some((season) =>
 									season.episodes.some((episode) => {
@@ -296,6 +403,18 @@ function SeriesPageContent() {
 										key={series.title}
 										onClick={() => openSeriesDetails(series)}
 										onKeyDown={(event) => {
+											if (
+												(event.key === "Enter" || event.key === " ") &&
+												event.repeat &&
+												!longPressHandledRef.current
+											) {
+												event.preventDefault();
+												event.stopPropagation();
+												longPressHandledRef.current = true;
+												void toggleSeriesFavorite(series);
+												return;
+											}
+
 											if (event.key === "Enter" || event.key === " ") {
 												event.preventDefault();
 												openSeriesDetails(series);
@@ -313,6 +432,30 @@ function SeriesPageContent() {
 												sizes="(min-width: 1536px) 12.5vw, (min-width: 1280px) 16.66vw, (min-width: 1024px) 20vw, (min-width: 768px) 25vw, (min-width: 640px) 33.33vw, 50vw"
 												src={firstEpisode?.tvgLogo}
 											/>
+
+											<Button
+												aria-label={
+													isFavorite
+														? "Remover série dos favoritos"
+														: "Adicionar série aos favoritos"
+												}
+												className="absolute top-2 left-2 z-20 rounded-full border border-border/60 bg-background/80 p-0 text-muted-foreground backdrop-blur hover:bg-background/80 hover:text-rose-500"
+												onClick={(event) => {
+													event.stopPropagation();
+													void toggleSeriesFavorite(series);
+												}}
+												size="icon"
+												type="button"
+												variant="icon"
+											>
+												<span
+													className={`material-symbols-outlined text-lg ${
+														isFavorite ? "text-rose-500" : ""
+													}`}
+												>
+													{isFavorite ? "favorite" : "favorite_border"}
+												</span>
+											</Button>
 
 											<div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
 												<Badge

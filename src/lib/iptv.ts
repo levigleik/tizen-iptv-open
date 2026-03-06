@@ -7,14 +7,32 @@ import type {
 	GroupedSeriesDto,
 } from "@/types/iptv";
 
-const DEFAULT_API_BASE_URL = "http://localhost:4000";
+const DEFAULT_API_BASE_URL = "/api";
+const FALLBACK_UPSTREAM = "http://localhost:4000";
+
+function getConfiguredApiBaseUrl(): string | null {
+	const value = process.env.NEXT_PUBLIC_IPTV_API_BASE_URL?.trim();
+	if (!value) return null;
+	return value.replace(/\/$/, "");
+}
 
 export function normalizeMac(value: string): string {
 	return value.replaceAll(":", "").trim().toUpperCase();
 }
 
 export function getApiBaseUrl(): string {
-	return process.env.NEXT_PUBLIC_IPTV_API_BASE_URL ?? DEFAULT_API_BASE_URL;
+	const configured = getConfiguredApiBaseUrl();
+
+	if (typeof window !== "undefined") {
+		if (
+			window.location.protocol === "https:" &&
+			configured?.startsWith("http://")
+		) {
+			return DEFAULT_API_BASE_URL;
+		}
+	}
+
+	return configured ?? DEFAULT_API_BASE_URL;
 }
 
 export function buildMediaProxyUrl(mac: string, entryId: number): string {
@@ -65,6 +83,24 @@ function buildGroupedCategoryListUrl(
 
 function toAbsoluteApiUrl(url: string): string {
 	if (/^https?:\/\//i.test(url)) {
+		if (
+			typeof window !== "undefined" &&
+			window.location.protocol === "https:"
+		) {
+			const configured = getConfiguredApiBaseUrl() ?? FALLBACK_UPSTREAM;
+
+			try {
+				const upstream = new URL(configured);
+				const target = new URL(url);
+
+				if (target.origin === upstream.origin) {
+					return `${DEFAULT_API_BASE_URL}${target.pathname}${target.search}`;
+				}
+			} catch {
+				// If URL parsing fails, keep original URL.
+			}
+		}
+
 		return url;
 	}
 
@@ -499,6 +535,52 @@ export async function fetchFavorites(
 	}
 
 	return (await response.json()) as FavoriteEntryDto[];
+}
+
+export async function addFavorite(
+	mac: string,
+	entryId: number,
+	signal?: AbortSignal,
+): Promise<FavoriteEntryDto> {
+	const cleanMac = normalizeMac(mac);
+	const response = await fetch(
+		`${getApiBaseUrl()}/iptv/${cleanMac}/favorites/${entryId}`,
+		{
+			method: "POST",
+			headers: { Accept: "application/json" },
+			cache: "no-store",
+			signal,
+		},
+	);
+
+	if (!response.ok) {
+		throw new Error("Falha ao adicionar favorito");
+	}
+
+	return (await response.json()) as FavoriteEntryDto;
+}
+
+export async function removeFavorite(
+	mac: string,
+	entryId: number,
+	signal?: AbortSignal,
+): Promise<FavoriteEntryDto> {
+	const cleanMac = normalizeMac(mac);
+	const response = await fetch(
+		`${getApiBaseUrl()}/iptv/${cleanMac}/favorites/${entryId}`,
+		{
+			method: "DELETE",
+			headers: { Accept: "application/json" },
+			cache: "no-store",
+			signal,
+		},
+	);
+
+	if (!response.ok) {
+		throw new Error("Falha ao remover favorito");
+	}
+
+	return (await response.json()) as FavoriteEntryDto;
 }
 
 export async function touchRecent(

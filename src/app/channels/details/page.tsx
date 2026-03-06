@@ -1,11 +1,13 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useMemo } from "react";
+import { toast } from "sonner";
 
 import { CatalogImage } from "@/components/iptv/catalog-image";
 import { LayoutShell } from "@/components/iptv/layout-shell";
+import { MobileSidebarToggle } from "@/components/iptv/mobile-sidebar-toggle";
 import {
 	Accordion,
 	AccordionContent,
@@ -15,7 +17,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { fetchGroupedChannelsPage, startChannelWatchSession } from "@/lib/iptv";
+import {
+	addFavorite,
+	fetchFavorites,
+	fetchGroupedChannelsPage,
+	removeFavorite,
+	startChannelWatchSession,
+} from "@/lib/iptv";
 import { useAppSettingsStore } from "@/lib/settings-store";
 import type {
 	GroupedChannelEpgItemDto,
@@ -140,10 +148,14 @@ function ChannelDetailsPageContent() {
 
 	const mac = searchParams.get("mac") ?? "";
 	const title = searchParams.get("title") ?? "";
+	const entryId = Number(searchParams.get("entryId") ?? "");
+	const hasEntryId = Number.isFinite(entryId);
 	const search = searchParams.get("search") ?? "";
 	const groupTitle = searchParams.get("groupTitle") ?? "";
 	const sort = searchParams.get("sort") ?? "";
 	const adult = useAppSettingsStore((state) => state.adult);
+	const queryClient = useQueryClient();
+	const favoritesQueryKey = ["favorites", "channels", mac] as const;
 
 	const backParams = new URLSearchParams();
 	if (search) backParams.set("search", search);
@@ -168,8 +180,64 @@ function ChannelDetailsPageContent() {
 			),
 	});
 
+	const { data: favoritesData } = useQuery({
+		queryKey: favoritesQueryKey,
+		enabled: Boolean(mac),
+		queryFn: ({ signal }) => fetchFavorites(mac, 200, signal, ["LIVE"]),
+	});
+
+	const favoriteEntryIds = useMemo(() => {
+		return new Set(
+			(favoritesData ?? []).map((favorite) => favorite.m3uEntryId),
+		);
+	}, [favoritesData]);
+
+	const addFavoriteMutation = useMutation({
+		mutationFn: (entryId: number) => addFavorite(mac, entryId),
+		onSuccess: (favorite) => {
+			queryClient.setQueryData(favoritesQueryKey, (current: unknown) => {
+				const list = Array.isArray(current) ? current : [];
+				const exists = list.some(
+					(item) =>
+						typeof item === "object" &&
+						item !== null &&
+						"m3uEntryId" in item &&
+						(item as { m3uEntryId?: number }).m3uEntryId ===
+							favorite.m3uEntryId,
+				);
+
+				if (exists) return list;
+				return [favorite, ...list];
+			});
+		},
+	});
+
+	const removeFavoriteMutation = useMutation({
+		mutationFn: (entryId: number) => removeFavorite(mac, entryId),
+		onSuccess: (_removed, entryId) => {
+			queryClient.setQueryData(favoritesQueryKey, (current: unknown) => {
+				const list = Array.isArray(current) ? current : [];
+				return list.filter((item) => {
+					if (typeof item !== "object" || item === null) return true;
+					if (!("m3uEntryId" in item)) return true;
+					return (item as { m3uEntryId?: number }).m3uEntryId !== entryId;
+				});
+			});
+		},
+	});
+
 	const channel = useMemo(() => {
-		if (!data || !title) return null;
+		if (!data) return null;
+
+		if (hasEntryId) {
+			const byEntryId = data.data.find((item) =>
+				item.variants.some((variant) => variant.id === entryId),
+			);
+
+			if (byEntryId) return byEntryId;
+		}
+
+		if (!title) return null;
 		const normalized = title.trim().toLowerCase();
 
 		const exact = data.data.find(
@@ -183,7 +251,7 @@ function ChannelDetailsPageContent() {
 				item.title.trim().toLowerCase().includes(normalized),
 			) ?? null
 		);
-	}, [data, title]);
+	}, [data, entryId, hasEntryId, title]);
 
 	const firstVariant = channel?.variants[0];
 	const allEpgItems = useMemo(() => {
@@ -295,11 +363,49 @@ function ChannelDetailsPageContent() {
 		router.push(`/watch?${params.toString()}`);
 	};
 
+	const channelFavoriteIds = channel
+		? channel.variants
+				.map((variant) => variant.id)
+				.filter((id) => favoriteEntryIds.has(id))
+		: [];
+	const isChannelFavorite = channelFavoriteIds.length > 0;
+
+	const toggleChannelFavorite = async () => {
+		if (!channel || !mac) return;
+
+		try {
+			if (isChannelFavorite) {
+				await Promise.all(
+					channelFavoriteIds.map((entryId) =>
+						removeFavoriteMutation.mutateAsync(entryId),
+					),
+				);
+				toast.success("Removido dos favoritos", {
+					description: channel.title,
+				});
+				return;
+			}
+
+			const entryId = channel.variants[0]?.id;
+			if (!entryId) return;
+
+			await addFavoriteMutation.mutateAsync(entryId);
+			toast.success("Adicionado aos favoritos", {
+				description: channel.title,
+			});
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Não foi possível favoritar";
+			toast.error(message);
+		}
+	};
+
 	return (
 		<LayoutShell activeSidebarItem="live-tv">
 			<main className="flex-1 flex flex-col h-full relative overflow-hidden bg-background">
 				<header className="h-20 shrink-0 border-b border-border/50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 flex items-center justify-between px-6 z-10 sticky top-0">
 					<div className="flex items-center gap-4">
+						<MobileSidebarToggle className="border-white/10 bg-black/40 text-white hover:bg-black/60 hover:text-white" />
 						<a
 							className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 w-10 text-white bg-black/40 backdrop-blur-md border border-white/10"
 							href={backHref}
@@ -309,6 +415,30 @@ function ChannelDetailsPageContent() {
 						<h1 className="text-2xl font-bold tracking-tight hidden lg:block">
 							{title || "Channel details"}
 						</h1>
+					</div>
+					<div className="flex items-center gap-4">
+						<Button
+							aria-label={
+								isChannelFavorite
+									? "Remover dos favoritos"
+									: "Adicionar aos favoritos"
+							}
+							className="h-10 w-10 border border-white/10 bg-black/40 text-white backdrop-blur-md hover:bg-black/40 hover:text-rose-400"
+							onClick={() => {
+								void toggleChannelFavorite();
+							}}
+							size="icon"
+							type="button"
+							variant="icon"
+						>
+							<span
+								className={`material-symbols-outlined ${
+									isChannelFavorite ? "text-rose-400" : ""
+								}`}
+							>
+								{isChannelFavorite ? "favorite" : "favorite_border"}
+							</span>
+						</Button>
 					</div>
 				</header>
 
