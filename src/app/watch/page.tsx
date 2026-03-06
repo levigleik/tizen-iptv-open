@@ -431,6 +431,16 @@ function WatchContent() {
 							) : (
 								<Badge variant="secondary">Qualidade não informada</Badge>
 							)}
+							<Badge variant="outline">
+								<a
+									href={streamUrl}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="underline"
+								>
+									{streamUrl}
+								</a>
+							</Badge>
 						</div>
 					</CardContent>
 				</Card>
