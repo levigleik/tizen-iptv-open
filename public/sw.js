@@ -17,6 +17,12 @@ self.addEventListener("install", (event) => {
 	);
 });
 
+self.addEventListener("message", (event) => {
+	if (event.data?.type === "SKIP_WAITING") {
+		self.skipWaiting();
+	}
+});
+
 self.addEventListener("activate", (event) => {
 	event.waitUntil(
 		caches
@@ -58,11 +64,12 @@ self.addEventListener("fetch", (event) => {
 
 	if (!isStaticAsset) return;
 
-	event.respondWith(
-		caches.match(request).then((cached) => {
-			if (cached) return cached;
+	const isNextStaticAsset = url.pathname.startsWith("/_next/static/");
 
-			return fetch(request)
+	if (isNextStaticAsset) {
+		// Prefer always fetching the newest build asset; fallback to cache for resilience.
+		event.respondWith(
+			fetch(request)
 				.then((response) => {
 					if (!response || response.status !== 200) {
 						return response;
@@ -75,7 +82,31 @@ self.addEventListener("fetch", (event) => {
 
 					return response;
 				})
-				.catch(() => cached || fetch(request));
+				.catch(() =>
+					caches.match(request).then((cached) => cached || Response.error()),
+				),
+		);
+		return;
+	}
+
+	event.respondWith(
+		caches.match(request).then((cached) => {
+			const networkRequest = fetch(request)
+				.then((response) => {
+					if (!response || response.status !== 200) {
+						return response;
+					}
+
+					const cloned = response.clone();
+					caches.open(CACHE_NAME).then((cache) => {
+						cache.put(request, cloned);
+					});
+
+					return response;
+				})
+				.catch(() => cached || Response.error());
+
+			return cached || networkRequest;
 		}),
 	);
 });

@@ -122,8 +122,9 @@ export function CatalogNavbar({
 						onClick={() => {
 							setActiveMobileControl("search");
 						}}
+						size="icon"
 						type="button"
-						variant="outline"
+						variant="icon"
 					>
 						<span className="material-symbols-outlined text-lg">search</span>
 					</Button>
@@ -147,14 +148,16 @@ export function CatalogNavbar({
 							type="text"
 							value={searchValue}
 						/>
-						<button
+						<Button
 							aria-label="Fechar busca"
-							className="absolute top-1/2 right-2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground"
+							className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full text-muted-foreground"
 							onClick={() => setActiveMobileControl("none")}
+							size="icon-sm"
 							type="button"
+							variant="icon"
 						>
 							<span className="material-symbols-outlined text-base">close</span>
-						</button>
+						</Button>
 					</div>
 				</div>
 
@@ -171,8 +174,9 @@ export function CatalogNavbar({
 								: "opacity-100"
 						}`}
 						onClick={() => setActiveMobileControl("group")}
+						size="icon"
 						type="button"
-						variant="outline"
+						variant="icon"
 					>
 						<span className="material-symbols-outlined text-lg">
 							filter_alt
@@ -229,8 +233,9 @@ export function CatalogNavbar({
 								: "opacity-100"
 						}`}
 						onClick={() => setActiveMobileControl("sort")}
+						size="icon"
 						type="button"
-						variant="outline"
+						variant="icon"
 					>
 						<span className="material-symbols-outlined text-lg">sort</span>
 					</Button>

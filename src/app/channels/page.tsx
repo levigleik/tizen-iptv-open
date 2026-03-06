@@ -455,18 +455,20 @@ function ChannelsPageContent() {
 											role="button"
 											tabIndex={0}
 										>
-											<button
+											<Button
 												aria-label={
 													isFavorite
 														? "Remover dos favoritos"
 														: "Adicionar aos favoritos"
 												}
-												className="absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground backdrop-blur transition-colors hover:text-rose-500"
+												className="absolute top-2 right-2 z-10 rounded-full border border-border/60 bg-background/80 p-0 text-muted-foreground backdrop-blur hover:bg-background/80 hover:text-rose-500"
 												onClick={(event) => {
 													event.stopPropagation();
 													void toggleChannelFavorite(channel);
 												}}
+												size="icon"
 												type="button"
+												variant="icon"
 											>
 												<span
 													className={`material-symbols-outlined text-lg ${
@@ -475,7 +477,7 @@ function ChannelsPageContent() {
 												>
 													{isFavorite ? "favorite" : "favorite_border"}
 												</span>
-											</button>
+											</Button>
 
 											<div className="flex items-center gap-4 mb-auto min-w-0">
 												<div className="relative w-14 h-14 rounded-lg overflow-hidden bg-secondary shrink-0 border border-border/50">

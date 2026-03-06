@@ -17,8 +17,9 @@ export function MobileSidebarToggle({ className }: MobileSidebarToggleProps) {
 			aria-label={isMobileSidebarOpen ? "Fechar menu" : "Abrir menu"}
 			className={cn("h-10 w-10 p-0 md:hidden", className)}
 			onClick={toggleMobileSidebar}
+			size="icon"
 			type="button"
-			variant="outline"
+			variant="icon"
 		>
 			<span className="material-symbols-outlined text-lg">
 				{isMobileSidebarOpen ? "close" : "menu"}

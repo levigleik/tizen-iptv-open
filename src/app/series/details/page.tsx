@@ -329,17 +329,19 @@ function SeriesDetailsPageContent() {
 						</a>
 					</div>
 					<div className="flex items-center gap-4">
-						<button
+						<Button
 							aria-label={
 								isSeriesFavorite
 									? "Remover série dos favoritos"
 									: "Adicionar série aos favoritos"
 							}
-							className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-black/40 text-white backdrop-blur-md transition-colors hover:text-rose-300"
+							className="h-10 w-10 border border-white/10 bg-black/40 text-white backdrop-blur-md hover:bg-black/40 hover:text-rose-300"
 							onClick={() => {
 								void toggleSeriesFavorite();
 							}}
+							size="icon"
 							type="button"
+							variant="icon"
 						>
 							<span
 								className={`material-symbols-outlined ${
@@ -348,7 +350,7 @@ function SeriesDetailsPageContent() {
 							>
 								{isSeriesFavorite ? "favorite" : "favorite_border"}
 							</span>
-						</button>
+						</Button>
 					</div>
 				</header>
 

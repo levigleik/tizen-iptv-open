@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -37,12 +38,13 @@ export function CategorySelector({
 				const isFocused = focusedIndex === index;
 
 				return (
-					<button
+					<Button
 						type="button"
 						key={option.key}
 						onClick={() => onSelect(option.key)}
 						onFocus={() => onFocus(index)}
-						className="text-left"
+						className="h-auto w-full justify-start whitespace-normal border-0 bg-transparent p-0 text-left hover:bg-transparent"
+						variant="icon"
 					>
 						<Card
 							className={[
@@ -68,7 +70,7 @@ export function CategorySelector({
 								</p>
 							</CardContent>
 						</Card>
-					</button>
+					</Button>
 				);
 			})}
 		</div>

@@ -28,6 +28,7 @@ import {
 import { useAppSettingsStore } from "@/lib/settings-store";
 import { resolveMacAddress } from "@/lib/tizen";
 import type { GroupedMovieDto } from "@/types/iptv";
+import { Button } from "@/components/ui/button";
 
 type SortMode = "default" | "title-asc" | "title-desc";
 const ITEMS_PER_PAGE = 24;
@@ -438,28 +439,31 @@ function MoviesPageContent() {
 												src={firstVariant?.tvgLogo}
 											/>
 
-											<div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
-												<button
-													aria-label={
-														isFavorite
-															? "Remover dos favoritos"
-															: "Adicionar aos favoritos"
-													}
-													className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur transition-colors hover:text-rose-300"
-													onClick={(event) => {
-														event.stopPropagation();
-														void toggleMovieFavorite(movie);
-													}}
-													type="button"
+											<Button
+												aria-label={
+													isFavorite
+														? "Remover dos favoritos"
+														: "Adicionar aos favoritos"
+												}
+												className="absolute top-2 left-2 z-20 rounded-full border border-white/20 bg-black/50 p-0 text-white backdrop-blur hover:bg-black/50 hover:text-rose-300"
+												onClick={(event) => {
+													event.stopPropagation();
+													void toggleMovieFavorite(movie);
+												}}
+												size="icon"
+												type="button"
+												variant="icon"
+											>
+												<span
+													className={`material-symbols-outlined text-lg ${
+														isFavorite ? "text-rose-300" : ""
+													}`}
 												>
-													<span
-														className={`material-symbols-outlined text-lg ${
-															isFavorite ? "text-rose-300" : ""
-														}`}
-													>
-														{isFavorite ? "favorite" : "favorite_border"}
-													</span>
-												</button>
+													{isFavorite ? "favorite" : "favorite_border"}
+												</span>
+											</Button>
+
+											<div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
 												{tags.map((badge) => (
 													<Badge
 														className={badgeClass(badge)}

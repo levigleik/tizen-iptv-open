@@ -14,6 +14,7 @@ import { CatalogImage } from "@/components/iptv/catalog-image";
 import { CatalogNavbar } from "@/components/iptv/catalog-navbar";
 import { LayoutShell } from "@/components/iptv/layout-shell";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
@@ -422,28 +423,6 @@ function SeriesPageContent() {
 										role="button"
 										tabIndex={0}
 									>
-										<button
-											aria-label={
-												isFavorite
-													? "Remover série dos favoritos"
-													: "Adicionar série aos favoritos"
-											}
-											className="absolute top-2 left-2 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground backdrop-blur transition-colors hover:text-rose-500"
-											onClick={(event) => {
-												event.stopPropagation();
-												void toggleSeriesFavorite(series);
-											}}
-											type="button"
-										>
-											<span
-												className={`material-symbols-outlined text-lg ${
-													isFavorite ? "text-rose-500" : ""
-												}`}
-											>
-												{isFavorite ? "favorite" : "favorite_border"}
-											</span>
-										</button>
-
 										<div className="movie-poster-container bg-muted">
 											<CatalogImage
 												alt={series.title}
@@ -453,6 +432,30 @@ function SeriesPageContent() {
 												sizes="(min-width: 1536px) 12.5vw, (min-width: 1280px) 16.66vw, (min-width: 1024px) 20vw, (min-width: 768px) 25vw, (min-width: 640px) 33.33vw, 50vw"
 												src={firstEpisode?.tvgLogo}
 											/>
+
+											<Button
+												aria-label={
+													isFavorite
+														? "Remover série dos favoritos"
+														: "Adicionar série aos favoritos"
+												}
+												className="absolute top-2 left-2 z-20 rounded-full border border-border/60 bg-background/80 p-0 text-muted-foreground backdrop-blur hover:bg-background/80 hover:text-rose-500"
+												onClick={(event) => {
+													event.stopPropagation();
+													void toggleSeriesFavorite(series);
+												}}
+												size="icon"
+												type="button"
+												variant="icon"
+											>
+												<span
+													className={`material-symbols-outlined text-lg ${
+														isFavorite ? "text-rose-500" : ""
+													}`}
+												>
+													{isFavorite ? "favorite" : "favorite_border"}
+												</span>
+											</Button>
 
 											<div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
 												<Badge
