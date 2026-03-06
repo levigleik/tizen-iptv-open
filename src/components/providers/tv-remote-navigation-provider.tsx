@@ -386,7 +386,10 @@ export function TvRemoteNavigationProvider({
 			}
 
 			if (action === "back") {
-				router.back();
+				const activeElement = document.activeElement;
+				if (!isTypingContext(activeElement)) {
+					router.back();
+				}
 				return true;
 			}
 
