@@ -1,12 +1,15 @@
 "use client";
 
 import {
+	useMutation,
 	useInfiniteQuery,
 	useIsFetching,
+	useQueryClient,
 	useQuery,
 } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { CatalogImage } from "@/components/iptv/catalog-image";
 import { CatalogNavbar } from "@/components/iptv/catalog-navbar";
 import { LayoutShell } from "@/components/iptv/layout-shell";
@@ -15,7 +18,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
-import { fetchGroupedCategoryList, fetchGroupedChannelsPage } from "@/lib/iptv";
+import {
+	addFavorite,
+	fetchFavorites,
+	fetchGroupedCategoryList,
+	fetchGroupedChannelsPage,
+	removeFavorite,
+} from "@/lib/iptv";
 import { useAppSettingsStore } from "@/lib/settings-store";
 import { resolveMacAddress } from "@/lib/tizen";
 import type { GroupedChannelDto } from "@/types/iptv";
@@ -46,12 +55,15 @@ function ChannelsPageContent() {
 	const [mac, setMac] = useState("");
 	const [selectedGroupTitle, setSelectedGroupTitle] =
 		useState(initialGroupTitle);
+	const longPressHandledRef = useRef(false);
 	const [sortMode, setSortMode] = useState<SortMode>(
 		["default", "title-asc", "title-desc"].includes(initialSort)
 			? initialSort
 			: "default",
 	);
 	const adult = useAppSettingsStore((state) => state.adult);
+	const queryClient = useQueryClient();
+	const favoritesQueryKey = ["favorites", "channels", mac] as const;
 
 	const isSearchFetching =
 		useIsFetching({
@@ -119,6 +131,46 @@ function ChannelsPageContent() {
 			fetchGroupedCategoryList(mac, "channels", adult, signal),
 	});
 
+	const { data: favoritesData } = useQuery({
+		queryKey: favoritesQueryKey,
+		enabled: Boolean(mac),
+		queryFn: ({ signal }) => fetchFavorites(mac, 200, signal, ["LIVE"]),
+	});
+
+	const addFavoriteMutation = useMutation({
+		mutationFn: (entryId: number) => addFavorite(mac, entryId),
+		onSuccess: (favorite) => {
+			queryClient.setQueryData(favoritesQueryKey, (current: unknown) => {
+				const list = Array.isArray(current) ? current : [];
+				const exists = list.some(
+					(item) =>
+						typeof item === "object" &&
+						item !== null &&
+						"m3uEntryId" in item &&
+						(item as { m3uEntryId?: number }).m3uEntryId ===
+							favorite.m3uEntryId,
+				);
+
+				if (exists) return list;
+				return [favorite, ...list];
+			});
+		},
+	});
+
+	const removeFavoriteMutation = useMutation({
+		mutationFn: (entryId: number) => removeFavorite(mac, entryId),
+		onSuccess: (_removed, entryId) => {
+			queryClient.setQueryData(favoritesQueryKey, (current: unknown) => {
+				const list = Array.isArray(current) ? current : [];
+				return list.filter((item) => {
+					if (typeof item !== "object" || item === null) return true;
+					if (!("m3uEntryId" in item)) return true;
+					return (item as { m3uEntryId?: number }).m3uEntryId !== entryId;
+				});
+			});
+		},
+	});
+
 	const {
 		data,
 		error,
@@ -147,6 +199,11 @@ function ChannelsPageContent() {
 	});
 
 	const groups = groupsResponse?.data ?? [];
+	const favoriteEntryIds = useMemo(() => {
+		return new Set(
+			(favoritesData ?? []).map((favorite) => favorite.m3uEntryId),
+		);
+	}, [favoritesData]);
 	const isSearchLoading = isPending || isOptimisticLoading;
 	const channels = useMemo(() => {
 		const merged = data?.pages.flatMap((page) => page.data) ?? [];
@@ -182,6 +239,41 @@ function ChannelsPageContent() {
 		router.push(`/channels/details?${params.toString()}`);
 	};
 
+	const toggleChannelFavorite = async (channel: GroupedChannelDto) => {
+		if (!mac) return;
+
+		const channelFavoriteIds = channel.variants
+			.map((variant) => variant.id)
+			.filter((id) => favoriteEntryIds.has(id));
+		const isFavorite = channelFavoriteIds.length > 0;
+
+		try {
+			if (isFavorite) {
+				await Promise.all(
+					channelFavoriteIds.map((entryId) =>
+						removeFavoriteMutation.mutateAsync(entryId),
+					),
+				);
+				toast.success("Removido dos favoritos", {
+					description: channel.title,
+				});
+				return;
+			}
+
+			const entryId = channel.variants[0]?.id;
+			if (!entryId) return;
+
+			await addFavoriteMutation.mutateAsync(entryId);
+			toast.success("Adicionado aos favoritos", {
+				description: channel.title,
+			});
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Não foi possível favoritar";
+			toast.error(message);
+		}
+	};
+
 	useEffect(() => {
 		if (!hasNextPage || isFetchingNextPage) return;
 
@@ -214,6 +306,17 @@ function ChannelsPageContent() {
 			document.removeEventListener("focusin", handleFocusIn);
 		};
 	}, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+	useEffect(() => {
+		const handleKeyUp = (event: KeyboardEvent) => {
+			if (event.key === "Enter" || event.key === " ") {
+				longPressHandledRef.current = false;
+			}
+		};
+
+		window.addEventListener("keyup", handleKeyUp, true);
+		return () => window.removeEventListener("keyup", handleKeyUp, true);
+	}, []);
 
 	return (
 		<LayoutShell activeSidebarItem="live-tv">
@@ -308,6 +411,10 @@ function ChannelsPageContent() {
 							>
 								{channels.map((channel, index) => {
 									const firstVariant = channel.variants[0];
+									const channelFavoriteIds = channel.variants
+										.map((variant) => variant.id)
+										.filter((id) => favoriteEntryIds.has(id));
+									const isFavorite = channelFavoriteIds.length > 0;
 									const tags = unique(
 										channel.variants.flatMap((variant) => variant.qualityTags),
 									);
@@ -328,6 +435,18 @@ function ChannelsPageContent() {
 											key={channel.title}
 											onClick={() => openChannelDetails(channel)}
 											onKeyDown={(event) => {
+												if (
+													(event.key === "Enter" || event.key === " ") &&
+													event.repeat &&
+													!longPressHandledRef.current
+												) {
+													event.preventDefault();
+													event.stopPropagation();
+													longPressHandledRef.current = true;
+													void toggleChannelFavorite(channel);
+													return;
+												}
+
 												if (event.key === "Enter" || event.key === " ") {
 													event.preventDefault();
 													openChannelDetails(channel);
@@ -336,6 +455,28 @@ function ChannelsPageContent() {
 											role="button"
 											tabIndex={0}
 										>
+											<button
+												aria-label={
+													isFavorite
+														? "Remover dos favoritos"
+														: "Adicionar aos favoritos"
+												}
+												className="absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground backdrop-blur transition-colors hover:text-rose-500"
+												onClick={(event) => {
+													event.stopPropagation();
+													void toggleChannelFavorite(channel);
+												}}
+												type="button"
+											>
+												<span
+													className={`material-symbols-outlined text-lg ${
+														isFavorite ? "text-rose-500" : ""
+													}`}
+												>
+													{isFavorite ? "favorite" : "favorite_border"}
+												</span>
+											</button>
+
 											<div className="flex items-center gap-4 mb-auto min-w-0">
 												<div className="relative w-14 h-14 rounded-lg overflow-hidden bg-secondary shrink-0 border border-border/50">
 													<CatalogImage

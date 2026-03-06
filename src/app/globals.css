@@ -287,14 +287,3 @@
 		),
 		linear-gradient(to top, hsl(var(--background)) 0%, transparent 40%);
 }
-
-.episode-card {
-	transition: all 0.2s ease-out;
-}
-
-.episode-card:hover,
-.episode-card:focus-within {
-	transform: scale(1.02);
-	z-index: 10;
-	background-color: hsl(var(--accent));
-}

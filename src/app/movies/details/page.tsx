@@ -1,19 +1,24 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useMemo } from "react";
+import { toast } from "sonner";
 
 import { LayoutShell } from "@/components/iptv/layout-shell";
+import { MobileSidebarToggle } from "@/components/iptv/mobile-sidebar-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+	addFavorite,
 	buildMediaProxyUrl,
+	fetchFavorites,
 	fetchGroupedMoviesPage,
 	fetchRecents,
+	removeFavorite,
 } from "@/lib/iptv";
 import { useAppSettingsStore } from "@/lib/settings-store";
 import type { GroupedEntryVariantDto } from "@/types/iptv";
@@ -45,6 +50,8 @@ function MovieDetailsPageContent() {
 	const groupTitle = searchParams.get("groupTitle") ?? "";
 	const sort = searchParams.get("sort") ?? "";
 	const adult = useAppSettingsStore((state) => state.adult);
+	const queryClient = useQueryClient();
+	const favoritesQueryKey = ["favorites", "movies", mac] as const;
 
 	const backParams = new URLSearchParams();
 	if (search) backParams.set("search", search);
@@ -75,6 +82,52 @@ function MovieDetailsPageContent() {
 		queryFn: ({ signal }) => fetchRecents(mac, 50, signal),
 	});
 
+	const { data: favoritesData } = useQuery({
+		queryKey: favoritesQueryKey,
+		enabled: Boolean(mac),
+		queryFn: ({ signal }) => fetchFavorites(mac, 200, signal, ["VOD"]),
+	});
+
+	const favoriteEntryIds = useMemo(() => {
+		return new Set(
+			(favoritesData ?? []).map((favorite) => favorite.m3uEntryId),
+		);
+	}, [favoritesData]);
+
+	const addFavoriteMutation = useMutation({
+		mutationFn: (entryId: number) => addFavorite(mac, entryId),
+		onSuccess: (favorite) => {
+			queryClient.setQueryData(favoritesQueryKey, (current: unknown) => {
+				const list = Array.isArray(current) ? current : [];
+				const exists = list.some(
+					(item) =>
+						typeof item === "object" &&
+						item !== null &&
+						"m3uEntryId" in item &&
+						(item as { m3uEntryId?: number }).m3uEntryId ===
+							favorite.m3uEntryId,
+				);
+
+				if (exists) return list;
+				return [favorite, ...list];
+			});
+		},
+	});
+
+	const removeFavoriteMutation = useMutation({
+		mutationFn: (entryId: number) => removeFavorite(mac, entryId),
+		onSuccess: (_removed, entryId) => {
+			queryClient.setQueryData(favoritesQueryKey, (current: unknown) => {
+				const list = Array.isArray(current) ? current : [];
+				return list.filter((item) => {
+					if (typeof item !== "object" || item === null) return true;
+					if (!("m3uEntryId" in item)) return true;
+					return (item as { m3uEntryId?: number }).m3uEntryId !== entryId;
+				});
+			});
+		},
+	});
+
 	const movie = useMemo(() => {
 		if (!data || !title) return null;
 		const normalized = title.trim().toLowerCase();
@@ -93,6 +146,12 @@ function MovieDetailsPageContent() {
 	}, [data, title]);
 
 	const firstVariant = movie?.variants[0];
+	const movieFavoriteIds = movie
+		? movie.variants
+				.map((variant) => variant.id)
+				.filter((id) => favoriteEntryIds.has(id))
+		: [];
+	const isMovieFavorite = movieFavoriteIds.length > 0;
 
 	const progressByVariantId = useMemo(() => {
 		const map = new Map<number, number>();
@@ -129,11 +188,42 @@ function MovieDetailsPageContent() {
 		router.push(`/watch?${params.toString()}`);
 	};
 
+	const toggleMovieFavorite = async () => {
+		if (!movie || !mac) return;
+
+		try {
+			if (isMovieFavorite) {
+				await Promise.all(
+					movieFavoriteIds.map((entryId) =>
+						removeFavoriteMutation.mutateAsync(entryId),
+					),
+				);
+				toast.success("Removido dos favoritos", {
+					description: movie.title,
+				});
+				return;
+			}
+
+			const entryId = movie.variants[0]?.id;
+			if (!entryId) return;
+
+			await addFavoriteMutation.mutateAsync(entryId);
+			toast.success("Adicionado aos favoritos", {
+				description: movie.title,
+			});
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Não foi possível favoritar";
+			toast.error(message);
+		}
+	};
+
 	return (
 		<LayoutShell activeSidebarItem="movies">
 			<main className="flex-1 flex flex-col h-full relative overflow-hidden bg-background">
 				<header className="h-20 shrink-0 border-b border-border/50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 flex items-center justify-between px-6 z-10 sticky top-0">
 					<div className="flex items-center gap-4">
+						<MobileSidebarToggle className="border-white/10 bg-black/40 text-white hover:bg-black/60 hover:text-white" />
 						<a
 							className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 w-10 text-white bg-black/40 backdrop-blur-md border border-white/10"
 							href={backHref}
@@ -143,6 +233,28 @@ function MovieDetailsPageContent() {
 						<h1 className="text-2xl font-bold tracking-tight hidden lg:block">
 							{title || "Movie details"}
 						</h1>
+					</div>
+					<div className="flex items-center gap-4">
+						<button
+							aria-label={
+								isMovieFavorite
+									? "Remover dos favoritos"
+									: "Adicionar aos favoritos"
+							}
+							className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-black/40 text-white backdrop-blur-md transition-colors hover:text-rose-400"
+							onClick={() => {
+								void toggleMovieFavorite();
+							}}
+							type="button"
+						>
+							<span
+								className={`material-symbols-outlined ${
+									isMovieFavorite ? "text-rose-400" : ""
+								}`}
+							>
+								{isMovieFavorite ? "favorite" : "favorite_border"}
+							</span>
+						</button>
 					</div>
 				</header>
 

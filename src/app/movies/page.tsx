@@ -1,12 +1,15 @@
 "use client";
 
 import {
+	useMutation,
 	useInfiniteQuery,
 	useIsFetching,
+	useQueryClient,
 	useQuery,
 } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { CatalogImage } from "@/components/iptv/catalog-image";
 import { CatalogNavbar } from "@/components/iptv/catalog-navbar";
 import { LayoutShell } from "@/components/iptv/layout-shell";
@@ -15,9 +18,12 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import {
+	addFavorite,
+	fetchFavorites,
 	fetchGroupedCategoryList,
 	fetchGroupedMoviesPage,
 	fetchRecents,
+	removeFavorite,
 } from "@/lib/iptv";
 import { useAppSettingsStore } from "@/lib/settings-store";
 import { resolveMacAddress } from "@/lib/tizen";
@@ -48,12 +54,15 @@ function MoviesPageContent() {
 	const [mac, setMac] = useState("");
 	const [selectedGroupTitle, setSelectedGroupTitle] =
 		useState(initialGroupTitle);
+	const longPressHandledRef = useRef(false);
 	const [sortMode, setSortMode] = useState<SortMode>(
 		["default", "title-asc", "title-desc"].includes(initialSort)
 			? initialSort
 			: "default",
 	);
 	const adult = useAppSettingsStore((state) => state.adult);
+	const queryClient = useQueryClient();
+	const favoritesQueryKey = ["favorites", "movies", mac] as const;
 	const isSearchFetching =
 		useIsFetching({
 			queryKey: ["movie-grouped", mac],
@@ -125,6 +134,46 @@ function MoviesPageContent() {
 		queryFn: ({ signal }) => fetchRecents(mac, 50, signal),
 	});
 
+	const { data: favoritesData } = useQuery({
+		queryKey: favoritesQueryKey,
+		enabled: Boolean(mac),
+		queryFn: ({ signal }) => fetchFavorites(mac, 200, signal, ["VOD"]),
+	});
+
+	const addFavoriteMutation = useMutation({
+		mutationFn: (entryId: number) => addFavorite(mac, entryId),
+		onSuccess: (favorite) => {
+			queryClient.setQueryData(favoritesQueryKey, (current: unknown) => {
+				const list = Array.isArray(current) ? current : [];
+				const exists = list.some(
+					(item) =>
+						typeof item === "object" &&
+						item !== null &&
+						"m3uEntryId" in item &&
+						(item as { m3uEntryId?: number }).m3uEntryId ===
+							favorite.m3uEntryId,
+				);
+
+				if (exists) return list;
+				return [favorite, ...list];
+			});
+		},
+	});
+
+	const removeFavoriteMutation = useMutation({
+		mutationFn: (entryId: number) => removeFavorite(mac, entryId),
+		onSuccess: (_removed, entryId) => {
+			queryClient.setQueryData(favoritesQueryKey, (current: unknown) => {
+				const list = Array.isArray(current) ? current : [];
+				return list.filter((item) => {
+					if (typeof item !== "object" || item === null) return true;
+					if (!("m3uEntryId" in item)) return true;
+					return (item as { m3uEntryId?: number }).m3uEntryId !== entryId;
+				});
+			});
+		},
+	});
+
 	const {
 		data,
 		error,
@@ -153,6 +202,11 @@ function MoviesPageContent() {
 	});
 
 	const groups = groupsResponse?.data ?? [];
+	const favoriteEntryIds = useMemo(() => {
+		return new Set(
+			(favoritesData ?? []).map((favorite) => favorite.m3uEntryId),
+		);
+	}, [favoritesData]);
 	const isSearchLoading = isPending || isOptimisticLoading;
 	const movies = useMemo(() => {
 		const merged = data?.pages.flatMap((page) => page.data) ?? [];
@@ -188,6 +242,41 @@ function MoviesPageContent() {
 		router.push(`/movies/details?${params.toString()}`);
 	};
 
+	const toggleMovieFavorite = async (movie: GroupedMovieDto) => {
+		if (!mac) return;
+
+		const movieFavoriteIds = movie.variants
+			.map((variant) => variant.id)
+			.filter((id) => favoriteEntryIds.has(id));
+		const isFavorite = movieFavoriteIds.length > 0;
+
+		try {
+			if (isFavorite) {
+				await Promise.all(
+					movieFavoriteIds.map((entryId) =>
+						removeFavoriteMutation.mutateAsync(entryId),
+					),
+				);
+				toast.success("Removido dos favoritos", {
+					description: movie.title,
+				});
+				return;
+			}
+
+			const entryId = movie.variants[0]?.id;
+			if (!entryId) return;
+
+			await addFavoriteMutation.mutateAsync(entryId);
+			toast.success("Adicionado aos favoritos", {
+				description: movie.title,
+			});
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Não foi possível favoritar";
+			toast.error(message);
+		}
+	};
+
 	useEffect(() => {
 		if (!hasNextPage || isFetchingNextPage) return;
 
@@ -220,6 +309,17 @@ function MoviesPageContent() {
 			document.removeEventListener("focusin", handleFocusIn);
 		};
 	}, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+	useEffect(() => {
+		const handleKeyUp = (event: KeyboardEvent) => {
+			if (event.key === "Enter" || event.key === " ") {
+				longPressHandledRef.current = false;
+			}
+		};
+
+		window.addEventListener("keyup", handleKeyUp, true);
+		return () => window.removeEventListener("keyup", handleKeyUp, true);
+	}, []);
 
 	return (
 		<LayoutShell activeSidebarItem="movies">
@@ -279,6 +379,10 @@ function MoviesPageContent() {
 						>
 							{movies.map((movie, index) => {
 								const firstVariant = movie.variants[0];
+								const movieFavoriteIds = movie.variants
+									.map((variant) => variant.id)
+									.filter((id) => favoriteEntryIds.has(id));
+								const isFavorite = movieFavoriteIds.length > 0;
 								const tags = unique(
 									movie.variants.flatMap((variant) => variant.qualityTags),
 								);
@@ -304,6 +408,18 @@ function MoviesPageContent() {
 										key={movie.title}
 										onClick={() => openMovieDetails(movie)}
 										onKeyDown={(event) => {
+											if (
+												(event.key === "Enter" || event.key === " ") &&
+												event.repeat &&
+												!longPressHandledRef.current
+											) {
+												event.preventDefault();
+												event.stopPropagation();
+												longPressHandledRef.current = true;
+												void toggleMovieFavorite(movie);
+												return;
+											}
+
 											if (event.key === "Enter" || event.key === " ") {
 												event.preventDefault();
 												openMovieDetails(movie);
@@ -323,6 +439,27 @@ function MoviesPageContent() {
 											/>
 
 											<div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+												<button
+													aria-label={
+														isFavorite
+															? "Remover dos favoritos"
+															: "Adicionar aos favoritos"
+													}
+													className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur transition-colors hover:text-rose-300"
+													onClick={(event) => {
+														event.stopPropagation();
+														void toggleMovieFavorite(movie);
+													}}
+													type="button"
+												>
+													<span
+														className={`material-symbols-outlined text-lg ${
+															isFavorite ? "text-rose-300" : ""
+														}`}
+													>
+														{isFavorite ? "favorite" : "favorite_border"}
+													</span>
+												</button>
 												{tags.map((badge) => (
 													<Badge
 														className={badgeClass(badge)}

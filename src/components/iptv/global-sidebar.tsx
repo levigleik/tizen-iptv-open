@@ -12,6 +12,8 @@ type SidebarItem = {
 
 type GlobalSidebarProps = {
 	activeItem?: string;
+	isMobileOpen?: boolean;
+	onRequestCloseMobile?: () => void;
 };
 
 const NAV_ITEMS: SidebarItem[] = [
@@ -29,7 +31,11 @@ const NAV_ITEMS: SidebarItem[] = [
 	{ key: "history", icon: "history", label: "Histórico", href: "/history" },
 ];
 
-export function GlobalSidebar({ activeItem = "home" }: GlobalSidebarProps) {
+export function GlobalSidebar({
+	activeItem = "home",
+	isMobileOpen = false,
+	onRequestCloseMobile,
+}: GlobalSidebarProps) {
 	const [isExpanded, setIsExpanded] = useState(false);
 
 	const handleFocusOut = (event: FocusEvent<HTMLElement>) => {
@@ -41,21 +47,30 @@ export function GlobalSidebar({ activeItem = "home" }: GlobalSidebarProps) {
 			return;
 		}
 
+		if (isMobileOpen) {
+			return;
+		}
+
 		setIsExpanded(false);
 	};
 
-	const sidebarWidth = isExpanded ? "w-64" : "w-20";
-	const labelVisibility = isExpanded
+	const showExpandedState = isExpanded || isMobileOpen;
+	const sidebarWidth = isExpanded ? "md:w-64" : "md:w-20";
+	const labelVisibility = showExpandedState
 		? "max-w-[220px] opacity-100 translate-x-0"
 		: "max-w-0 opacity-0 -translate-x-2";
-	const itemLayout = isExpanded
+	const itemLayout = showExpandedState
 		? "justify-start gap-3"
 		: "justify-center gap-0";
+	const mobileVisibility = isMobileOpen ? "translate-x-0" : "-translate-x-full";
+	const mobilePointerEvents = isMobileOpen
+		? "pointer-events-auto"
+		: "pointer-events-none md:pointer-events-auto";
 
 	return (
 		<aside
 			data-sidebar-root="true"
-			className={`${sidebarWidth} flex flex-col items-center shrink-0 z-20 transition-[width] duration-300 ease-out`}
+			className={`fixed inset-y-0 left-0 ${mobileVisibility} ${mobilePointerEvents} w-64 border-r border-border/50 bg-background md:relative md:translate-x-0 ${sidebarWidth} flex flex-col items-center shrink-0 z-50 md:z-20 transition-[width,transform] duration-300 ease-in-out`}
 			onFocusCapture={() => setIsExpanded(true)}
 			onBlurCapture={handleFocusOut}
 		>
@@ -64,7 +79,7 @@ export function GlobalSidebar({ activeItem = "home" }: GlobalSidebarProps) {
 					live_tv
 				</span>
 				<span
-					className={`${isExpanded ? "ml-3" : "ml-0"} font-bold text-xl tracking-tight whitespace-nowrap overflow-hidden transition-all duration-200 ${labelVisibility}`}
+					className={`${showExpandedState ? "ml-3" : "ml-0"} font-bold text-xl tracking-tight whitespace-nowrap overflow-hidden transition-all duration-200 ${labelVisibility}`}
 				>
 					PlayTV
 				</span>
@@ -76,7 +91,7 @@ export function GlobalSidebar({ activeItem = "home" }: GlobalSidebarProps) {
 						{item.dividerBefore ? (
 							<div
 								className={`my-4 border-t border-border/50 w-full transition-opacity duration-200 ${
-									isExpanded ? "opacity-100" : "opacity-0"
+									showExpandedState ? "opacity-100" : "opacity-0"
 								}`}
 							/>
 						) : null}
@@ -88,6 +103,7 @@ export function GlobalSidebar({ activeItem = "home" }: GlobalSidebarProps) {
 							}
 							href={item.href}
 							data-sidebar-focus="true"
+							onClick={() => onRequestCloseMobile?.()}
 						>
 							<span className="material-symbols-outlined">{item.icon}</span>
 							<span
@@ -109,6 +125,7 @@ export function GlobalSidebar({ activeItem = "home" }: GlobalSidebarProps) {
 					}
 					href="/settings"
 					data-sidebar-focus="true"
+					onClick={() => onRequestCloseMobile?.()}
 				>
 					<span className="material-symbols-outlined">settings</span>
 					<span

@@ -18,7 +18,7 @@ export function QueryProvider({ children }: QueryProviderProps) {
 				defaultOptions: {
 					queries: {
 						refetchOnWindowFocus: true,
-						retry: 1,
+						retry: 3,
 						staleTime: 5000,
 					},
 				},

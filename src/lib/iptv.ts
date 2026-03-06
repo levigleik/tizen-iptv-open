@@ -537,6 +537,52 @@ export async function fetchFavorites(
 	return (await response.json()) as FavoriteEntryDto[];
 }
 
+export async function addFavorite(
+	mac: string,
+	entryId: number,
+	signal?: AbortSignal,
+): Promise<FavoriteEntryDto> {
+	const cleanMac = normalizeMac(mac);
+	const response = await fetch(
+		`${getApiBaseUrl()}/iptv/${cleanMac}/favorites/${entryId}`,
+		{
+			method: "POST",
+			headers: { Accept: "application/json" },
+			cache: "no-store",
+			signal,
+		},
+	);
+
+	if (!response.ok) {
+		throw new Error("Falha ao adicionar favorito");
+	}
+
+	return (await response.json()) as FavoriteEntryDto;
+}
+
+export async function removeFavorite(
+	mac: string,
+	entryId: number,
+	signal?: AbortSignal,
+): Promise<FavoriteEntryDto> {
+	const cleanMac = normalizeMac(mac);
+	const response = await fetch(
+		`${getApiBaseUrl()}/iptv/${cleanMac}/favorites/${entryId}`,
+		{
+			method: "DELETE",
+			headers: { Accept: "application/json" },
+			cache: "no-store",
+			signal,
+		},
+	);
+
+	if (!response.ok) {
+		throw new Error("Falha ao remover favorito");
+	}
+
+	return (await response.json()) as FavoriteEntryDto;
+}
+
 export async function touchRecent(
 	mac: string,
 	entryId: number,

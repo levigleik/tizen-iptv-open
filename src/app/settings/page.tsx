@@ -6,6 +6,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { LayoutShell } from "@/components/iptv/layout-shell";
+import { MobileSidebarToggle } from "@/components/iptv/mobile-sidebar-toggle";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -160,7 +161,8 @@ export default function SettingsPage() {
 	return (
 		<LayoutShell activeSidebarItem="settings">
 			<main className="flex-1 flex flex-col h-full relative overflow-hidden bg-background">
-				<header className="h-20 shrink-0 border-b border-border/50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 flex items-center px-6 z-10 sticky top-0">
+				<header className="h-20 shrink-0 border-b border-border/50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 flex items-center gap-4 px-6 z-10 sticky top-0">
+					<MobileSidebarToggle />
 					<h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
 				</header>
 
