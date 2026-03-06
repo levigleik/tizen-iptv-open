@@ -353,7 +353,7 @@ function ChannelDetailsPageContent() {
 		const streamUrl = await startWatchMutation.mutateAsync(variant);
 		const params = new URLSearchParams({
 			title: variant.rawTitle,
-			streamUrl,
+			streamUrl: variant.streamUrl,
 			groupTitle: variant.groupTitle,
 			quality: variant.qualityTags.join(","),
 			isLegendado: variant.isLegendado ? "1" : "0",

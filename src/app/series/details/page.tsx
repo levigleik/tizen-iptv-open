@@ -275,7 +275,7 @@ function SeriesDetailsPageContent() {
 			entryId: String(episode.id),
 			resume: options?.startFromBeginning ? "0" : "1",
 			title: episode.rawTitle,
-			streamUrl: mediaUrl,
+			streamUrl: episode.streamUrl,
 			groupTitle: episode.groupTitle,
 			quality: "",
 			isLegendado: "0",

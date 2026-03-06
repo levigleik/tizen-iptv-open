@@ -178,7 +178,7 @@ function MovieDetailsPageContent() {
 			entryId: String(variant.id),
 			resume: options?.startFromBeginning ? "0" : "1",
 			title: variant.rawTitle,
-			streamUrl: mediaUrl,
+			streamUrl: variant.streamUrl,
 			groupTitle: variant.groupTitle,
 			quality: variant.qualityTags.join(","),
 			isLegendado: variant.isLegendado ? "1" : "0",
