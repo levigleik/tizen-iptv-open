@@ -75,6 +75,7 @@ export default function RootLayout({
 			</head>
 			<body
 				className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} antialiased`}
+				tabIndex={0}
 			>
 				<QueryProvider>
 					<TvRemoteNavigationProvider>

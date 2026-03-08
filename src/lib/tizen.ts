@@ -40,23 +40,27 @@ const STORAGE_KEY = "iptv.mac";
 
 export function registerTizenKeys(): void {
 	if (typeof window === "undefined") return;
-	const device = window.tizen?.tvinputdevice;
-	if (!device) return;
 
-	try {
-		if (device.registerKeyBatch) {
-			device.registerKeyBatch(TIZEN_EXTRA_KEYS);
+	const tryRegister = () => {
+		const device = window.tizen?.tvinputdevice;
+		if (!device) {
+			setTimeout(tryRegister, 100);
 			return;
 		}
 
-		for (const key of TIZEN_EXTRA_KEYS) {
-			device.registerKey(key);
-		}
-	} catch {
-		// ignora falhas de registro em ambientes não-Tizen
-	}
-}
+		try {
+			if (device.registerKeyBatch) {
+				device.registerKeyBatch(TIZEN_EXTRA_KEYS);
+			} else {
+				for (const key of TIZEN_EXTRA_KEYS) {
+					device.registerKey(key);
+				}
+			}
+		} catch {}
+	};
 
+	tryRegister();
+}
 export function getMacFromTizenApi(): string | null {
 	if (typeof window === "undefined") return null;
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useHashRouter } from "@/hooks/use-hash-router";
 import { Suspense, useMemo } from "react";
 import { toast } from "sonner";
 
@@ -143,8 +143,7 @@ function dedupeEpgItems(
 }
 
 function ChannelDetailsPageContent() {
-	const router = useRouter();
-	const searchParams = useSearchParams();
+	const { navigate, searchParams } = useHashRouter();
 
 	const mac = searchParams.get("mac") ?? "";
 	const title = searchParams.get("title") ?? "";
@@ -359,8 +358,7 @@ function ChannelDetailsPageContent() {
 			isLegendado: variant.isLegendado ? "1" : "0",
 			fromPreview: `${window.location.pathname}${window.location.search}`,
 		});
-
-		router.push(`/watch?${params.toString()}`);
+		navigate(`/watch?${params.toString()}`);
 	};
 
 	const channelFavoriteIds = channel
@@ -408,7 +406,11 @@ function ChannelDetailsPageContent() {
 						<MobileSidebarToggle className="border-white/10 bg-black/40 text-white hover:bg-black/60 hover:text-white" />
 						<a
 							className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 w-10 text-white bg-black/40 backdrop-blur-md border border-white/10"
-							href={backHref}
+							onClick={(e) => {
+								e.preventDefault();
+								navigate(backHref);
+							}}
+							href={`#${backHref}`}
 						>
 							<span className="material-symbols-outlined">arrow_back</span>
 						</a>
@@ -567,7 +569,7 @@ function ChannelDetailsPageContent() {
 										return (
 											<Card className="border-border/50" key={variant.id}>
 												<Button
-													className="h-auto w-full justify-start rounded-xl p-4 text-left gap-4"
+													className="h-auto w-full justify-start rounded-xl p-4 text-left gap-4 focus-visible:scale-100"
 													data-initial-focus={
 														index === 0 ? "variant" : undefined
 													}

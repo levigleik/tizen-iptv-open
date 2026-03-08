@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useHashRouter } from "@/hooks/use-hash-router";
 import { Suspense, useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -39,8 +39,7 @@ const CATEGORY_LABEL: Record<CatalogCategory, string> = {
 };
 
 function PreviewContent() {
-	const router = useRouter();
-	const searchParams = useSearchParams();
+	const { navigate, searchParams } = useHashRouter();
 
 	const mac = searchParams.get("mac") ?? "";
 	const title = searchParams.get("title") ?? "";
@@ -157,7 +156,7 @@ function PreviewContent() {
 			from: `${from ? from : "/"}`,
 			fromPreview: `${window.location.pathname}${window.location.search}`,
 		});
-		router.push(`/watch?${params.toString()}`);
+		navigate(`/watch?${params.toString()}`);
 	};
 
 	const openVariant = async (variant: GroupedEntryVariantDto) => {
@@ -191,7 +190,7 @@ function PreviewContent() {
 		enabled: true,
 		onAction: (action) => {
 			if (action === "back") {
-				router.push(from || "/");
+				navigate(from || "/");
 			}
 		},
 	});
@@ -222,7 +221,7 @@ function PreviewContent() {
 							</div>
 							<Button
 								variant="outline"
-								onClick={() => router.push(from || "/")}
+								onClick={() => navigate(from || "/")}
 							>
 								Voltar
 							</Button>
@@ -354,19 +353,5 @@ function PreviewContent() {
 }
 
 export default function PreviewPage() {
-	return (
-		<Suspense
-			fallback={
-				<main className="mx-auto max-w-6xl p-6">
-					<Card>
-						<CardContent className="py-6">
-							Carregando pré-visualização...
-						</CardContent>
-					</Card>
-				</main>
-			}
-		>
-			<PreviewContent />
-		</Suspense>
-	);
+	return <PreviewContent />;
 }

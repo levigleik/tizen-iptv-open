@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useHashRouter } from "@/hooks/use-hash-router";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -17,8 +17,7 @@ import { fetchRecents, touchRecent, updateRecentProgress } from "@/lib/iptv";
 import { resolveMacAddress } from "@/lib/tizen";
 
 function WatchContent() {
-	const router = useRouter();
-	const searchParams = useSearchParams();
+	const { navigate, searchParams } = useHashRouter();
 	const videoRef = useRef<HTMLVideoElement | null>(null);
 	const initializedUrlRef = useRef<string | null>(null);
 	const retryCountRef = useRef(0);
@@ -135,6 +134,15 @@ function WatchContent() {
 
 		const tryPlay = () => {
 			void video.play().catch(() => {});
+			if (video.requestFullscreen) {
+				video.requestFullscreen().catch(() => {});
+			} else if ((video as any).webkitRequestFullscreen) {
+				(video as any).webkitRequestFullscreen();
+			} else if ((video as any).mozRequestFullScreen) {
+				(video as any).mozRequestFullScreen();
+			} else if ((video as any).msRequestFullscreen) {
+				(video as any).msRequestFullscreen();
+			}
 		};
 
 		const markPlayingStart = () => {
@@ -357,7 +365,7 @@ function WatchContent() {
 
 	const handleGoBack = () => {
 		flushProgressRef.current?.(true);
-		router.push(fromPreview || "/preview");
+		navigate(fromPreview || "/preview");
 	};
 
 	useTvRemote({
@@ -450,17 +458,5 @@ function WatchContent() {
 }
 
 export default function WatchPage() {
-	return (
-		<Suspense
-			fallback={
-				<main className="mx-auto max-w-6xl p-6">
-					<Card>
-						<CardContent className="py-6">Carregando conteúdo...</CardContent>
-					</Card>
-				</main>
-			}
-		>
-			<WatchContent />
-		</Suspense>
-	);
+	return <WatchContent />;
 }

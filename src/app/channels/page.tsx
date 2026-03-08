@@ -7,7 +7,7 @@ import {
 	useQueryClient,
 	useQuery,
 } from "@tanstack/react-query";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useHashRouter } from "@/hooks/use-hash-router";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CatalogImage } from "@/components/iptv/catalog-image";
@@ -45,9 +45,7 @@ function badgeClass(badge: string) {
 }
 
 function ChannelsPageContent() {
-	const router = useRouter();
-	const pathname = usePathname();
-	const searchParams = useSearchParams();
+	const { navigate, pathname, searchParams } = useHashRouter();
 	const initialSearch = searchParams.get("search") ?? "";
 	const initialGroupTitle = searchParams.get("groupTitle") ?? "";
 	const initialSort = (searchParams.get("sort") as SortMode) ?? "default";
@@ -118,11 +116,9 @@ function ChannelsPageContent() {
 		const next = params.toString();
 
 		if (current !== next) {
-			router.replace(next ? `${pathname}?${next}` : pathname, {
-				scroll: false,
-			});
+			navigate(next ? `${pathname}?${next}` : pathname);
 		}
-	}, [pathname, router, search, searchParams, selectedGroupTitle, sortMode]);
+	}, [pathname, navigate, search, searchParams, selectedGroupTitle, sortMode]);
 
 	const { data: groupsResponse } = useQuery<{ data: string[] }>({
 		queryKey: ["channels-group-list", mac, adult],
@@ -236,7 +232,7 @@ function ChannelsPageContent() {
 			sort: sortMode,
 		});
 
-		router.push(`/channels/details?${params.toString()}`);
+		navigate(`/channels/details?${params.toString()}`);
 	};
 
 	const toggleChannelFavorite = async (channel: GroupedChannelDto) => {
@@ -455,29 +451,24 @@ function ChannelsPageContent() {
 											role="button"
 											tabIndex={0}
 										>
-											<Button
-												aria-label={
-													isFavorite
-														? "Remover dos favoritos"
-														: "Adicionar aos favoritos"
-												}
-												className="absolute top-2 right-2 z-10 rounded-full border border-border/60 bg-background/80 p-0 text-muted-foreground backdrop-blur hover:bg-background/80 hover:text-rose-500"
-												onClick={(event) => {
-													event.stopPropagation();
-													void toggleChannelFavorite(channel);
-												}}
-												size="icon"
-												type="button"
-												variant="icon"
-											>
-												<span
-													className={`material-symbols-outlined text-lg ${
-														isFavorite ? "text-rose-500" : ""
-													}`}
-												>
-													{isFavorite ? "favorite" : "favorite_border"}
-												</span>
-											</Button>
+											{isFavorite ? (
+												<div className="absolute top-2 left-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-background/80 backdrop-blur">
+													<span className="material-symbols-outlined text-lg text-rose-500">
+														favorite
+													</span>
+												</div>
+											) : null}
+
+											{hasLegendado ? (
+												<div className="absolute top-2 right-2 z-10">
+													<Badge
+														className="bg-yellow-500/90 text-black uppercase tracking-wider shadow-sm"
+														variant="outline"
+													>
+														[L]
+													</Badge>
+												</div>
+											) : null}
 
 											<div className="flex items-center gap-4 mb-auto min-w-0">
 												<div className="relative w-14 h-14 rounded-lg overflow-hidden bg-secondary shrink-0 border border-border/50">
@@ -509,14 +500,7 @@ function ChannelsPageContent() {
 														{tag}
 													</Badge>
 												))}
-												{hasLegendado ? (
-													<Badge
-														className="bg-yellow-500/90 text-black uppercase tracking-wider"
-														variant="outline"
-													>
-														[L]
-													</Badge>
-												) : null}
+
 												{hasEpg ? (
 													<Badge
 														className="bg-primary/20 text-primary border-primary/30 uppercase tracking-wider"
@@ -568,9 +552,5 @@ function ChannelsPageContent() {
 }
 
 export default function ChannelsPage() {
-	return (
-		<Suspense fallback={null}>
-			<ChannelsPageContent />
-		</Suspense>
-	);
+	return <ChannelsPageContent />;
 }

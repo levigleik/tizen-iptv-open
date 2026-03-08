@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+
 import { type ReactNode, useCallback, useEffect } from "react";
 
 import { useTvRemote } from "@/hooks/use-tv-remote";
@@ -322,8 +322,6 @@ function ensureInitialFocus(): HTMLElement | null {
 export function TvRemoteNavigationProvider({
 	children,
 }: TvRemoteNavigationProviderProps) {
-	const router = useRouter();
-	const pathname = usePathname();
 
 	const moveFocus = useCallback((action: TvRemoteAction): boolean => {
 		if (!DIRECTIONAL_ACTIONS.includes(action)) return false;
@@ -350,7 +348,28 @@ export function TvRemoteNavigationProvider({
 			return true;
 		}
 
-		const next = findBestCandidate(activeElement, focusable, action);
+		const activeSidebarRoot = activeElement.closest('[data-sidebar-root="true"]');
+		let next = findBestCandidate(activeElement, focusable, action);
+
+		const isEnteringSidebar = !activeSidebarRoot && next?.closest('[data-sidebar-root="true"]');
+		if (isEnteringSidebar) {
+			const activeSidebarItem = document.querySelector(
+				'[data-sidebar-root="true"] [data-sidebar-active="true"]',
+			);
+			if (
+				activeSidebarItem instanceof HTMLElement &&
+				isFocusableCandidate(activeSidebarItem)
+			) {
+				next = activeSidebarItem;
+			}
+		}
+
+		// Prevent vertical navigation from escaping the sidebar.
+		const nextSidebarRoot = next?.closest('[data-sidebar-root="true"]');
+		if (activeSidebarRoot && (action === "up" || action === "down") && nextSidebarRoot !== activeSidebarRoot) {
+			// If we are in the sidebar and trying to go up/down but it escapes to the main content, stay put.
+			return true;
+		}
 
 		const isCatalogVerticalMove =
 			(activeElement.dataset.catalogItem === "true" ||
@@ -387,9 +406,55 @@ export function TvRemoteNavigationProvider({
 
 			if (action === "back") {
 				const activeElement = document.activeElement;
-				if (!isTypingContext(activeElement)) {
-					router.back();
+				if (isTypingContext(activeElement)) return false;
+
+				const isSidebarPresent = document.querySelector('[data-sidebar-root="true"]') !== null;
+				if (!isSidebarPresent) {
+					// Fallback if there is no sidebar (e.g., if a page prevents default but somehow reaches here, or full-screen modes Without layout)
+					window.history.back();
+					return true;
 				}
+
+				const isSidebarFocused =
+					activeElement instanceof HTMLElement &&
+					activeElement.closest('[data-sidebar-root="true"]') !== null;
+
+				const hash = window.location.hash || "#/";
+				const isHomePath = hash === "#/" || hash === "#";
+
+				if (!isSidebarFocused) {
+					// 1. Move focus back to the Sidebar
+					const activeSidebarItem = document.querySelector(
+						'[data-sidebar-root="true"] [data-sidebar-active="true"]',
+					);
+					if (activeSidebarItem instanceof HTMLElement && isFocusableCandidate(activeSidebarItem)) {
+						focusElement(activeSidebarItem);
+					} else {
+						const firstSidebarItem = document.querySelector('[data-sidebar-root="true"] a[href]');
+						if (firstSidebarItem instanceof HTMLElement && isFocusableCandidate(firstSidebarItem)) {
+							focusElement(firstSidebarItem);
+						}
+					}
+					return true;
+				}
+
+				if (!isHomePath) {
+					// 2. If inside sidebar but not on Home -> navigate to Home
+					window.location.hash = "#/";
+					return true;
+				}
+
+				// 3. If inside Sidebar AND on Home -> Exit Application
+				try {
+					// @ts-ignore
+					if (typeof tizen !== "undefined" && tizen.application) {
+						// @ts-ignore
+						tizen.application.getCurrentApplication().exit();
+					}
+				} catch (e) {
+					console.error("Failed to exit application", e);
+				}
+
 				return true;
 			}
 
@@ -398,66 +463,88 @@ export function TvRemoteNavigationProvider({
 	});
 
 	useEffect(() => {
-		void pathname;
 		let intervalId: number | null = null;
 		let guardTimeoutId: number | null = null;
+		let timeoutId: number | null = null;
 
-		const timeoutId = window.setTimeout(() => {
-			const initialFocused = ensureInitialFocus();
+		const triggerFocusRoutine = () => {
+			if (timeoutId !== null) window.clearTimeout(timeoutId);
+			if (intervalId !== null) window.clearInterval(intervalId);
+			if (guardTimeoutId !== null) window.clearTimeout(guardTimeoutId);
 
-			let attempts = 0;
-			const maxAttempts = 30;
-			intervalId = window.setInterval(() => {
-				attempts += 1;
+			timeoutId = window.setTimeout(() => {
+				const initialFocused = ensureInitialFocus();
 
-				const preferred = getPreferredInitialFocusElement();
-				if (!preferred) {
-					if (attempts >= maxAttempts && intervalId !== null) {
-						window.clearInterval(intervalId);
-						intervalId = null;
+				let attempts = 0;
+				const maxAttempts = 20; // Reduce polling time since routing is fast
+				intervalId = window.setInterval(() => {
+					attempts += 1;
+
+					const preferred = getPreferredInitialFocusElement();
+					if (!preferred) {
+						if (attempts >= maxAttempts && intervalId !== null) {
+							window.clearInterval(intervalId);
+							intervalId = null;
+						}
+						return;
 					}
-					return;
-				}
 
-				const activeElement = document.activeElement;
-				const canReplaceFocus =
-					!(activeElement instanceof HTMLElement) ||
-					activeElement === document.body ||
-					activeElement === document.documentElement ||
-					activeElement === initialFocused ||
-					isTypingContext(activeElement);
+					const activeElement = document.activeElement;
+					const canReplaceFocus =
+						!(activeElement instanceof HTMLElement) ||
+						activeElement === document.body ||
+						activeElement === document.documentElement ||
+						activeElement === document.querySelector(".movie-poster") || // generic placeholder focus
+						activeElement === initialFocused ||
+						isTypingContext(activeElement);
 
-				if (canReplaceFocus) {
-					focusElement(preferred);
-				}
+					if (canReplaceFocus) {
+						focusElement(preferred);
+					}
 
-				if (intervalId !== null) {
-					window.clearInterval(intervalId);
-					intervalId = null;
-				}
-			}, 120);
-
-			guardTimeoutId = window.setTimeout(
-				() => {
 					if (intervalId !== null) {
 						window.clearInterval(intervalId);
 						intervalId = null;
 					}
-				},
-				maxAttempts * 120 + 100,
-			);
-		}, 0);
+				}, 80);
+
+				guardTimeoutId = window.setTimeout(
+					() => {
+						if (intervalId !== null) {
+							window.clearInterval(intervalId);
+							intervalId = null;
+						}
+					},
+					maxAttempts * 80 + 100,
+				);
+			}, 0);
+
+		};
+
+		// Run initially
+		triggerFocusRoutine();
+
+		// Expose a custom event for triggering from inner components (like when infinite loading finishes or router transitions)
+		const handleFocusRequest = () => {
+			window.requestAnimationFrame(() => {
+				window.requestAnimationFrame(() => {
+					triggerFocusRoutine();
+				});
+			});
+		};
+
+		window.addEventListener("hashchange", handleFocusRequest);
+		window.addEventListener("tv-focus-request", handleFocusRequest);
 
 		return () => {
-			window.clearTimeout(timeoutId);
-			if (intervalId !== null) {
-				window.clearInterval(intervalId);
-			}
-			if (guardTimeoutId !== null) {
-				window.clearTimeout(guardTimeoutId);
-			}
+			window.removeEventListener("hashchange", handleFocusRequest);
+			window.removeEventListener("tv-focus-request", handleFocusRequest);
+			
+			if (timeoutId !== null) window.clearTimeout(timeoutId);
+			if (intervalId !== null) window.clearInterval(intervalId);
+			if (guardTimeoutId !== null) window.clearTimeout(guardTimeoutId);
 		};
-	}, [pathname]);
+	}, []);
 
 	return children;
 }

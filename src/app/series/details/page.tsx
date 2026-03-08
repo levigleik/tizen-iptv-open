@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useHashRouter } from "@/hooks/use-hash-router";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -60,9 +60,7 @@ function formatProgressLabel(seconds: number): string {
 }
 
 function SeriesDetailsPageContent() {
-	const router = useRouter();
-	const pathname = usePathname();
-	const searchParams = useSearchParams();
+	const { navigate, pathname, searchParams } = useHashRouter();
 	const seasonQueryValue = searchParams.get("season");
 	const seasonFromQuery = seasonQueryValue ? Number(seasonQueryValue) : NaN;
 	const [selectedSeason, setSelectedSeason] = useState<number | null>(
@@ -208,12 +206,8 @@ function SeriesDetailsPageContent() {
 		const current = searchParams.toString();
 		const next = params.toString();
 
-		if (current !== next) {
-			router.replace(next ? `${pathname}?${next}` : pathname, {
-				scroll: false,
-			});
-		}
-	}, [pathname, router, searchParams, selectedSeason]);
+			navigate(next ? `${pathname}?${next}` : pathname);
+	}, [pathname, navigate, searchParams, selectedSeason]);
 
 	const activeSeason = useMemo(() => {
 		if (!series?.seasons.length) return null;
@@ -282,7 +276,7 @@ function SeriesDetailsPageContent() {
 			fromPreview: `${window.location.pathname}${window.location.search}`,
 		});
 
-		router.push(`/watch?${params.toString()}`);
+		navigate(`/watch?${params.toString()}`);
 	};
 
 	const toggleSeriesFavorite = async () => {
@@ -323,7 +317,11 @@ function SeriesDetailsPageContent() {
 						<MobileSidebarToggle className="border-white/10 bg-black/40 text-white hover:bg-black/60 hover:text-white" />
 						<a
 							className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none hover:bg-accent hover:text-accent-foreground h-10 w-10 text-white bg-black/40 backdrop-blur-md border border-white/10"
-							href={backHref}
+							onClick={(e) => {
+								e.preventDefault();
+								navigate(backHref);
+							}}
+							href={`#${backHref}`}
 						>
 							<span className="material-symbols-outlined">arrow_back</span>
 						</a>
@@ -526,6 +524,9 @@ function SeriesDetailsPageContent() {
 																			<div className="mt-2 flex flex-wrap gap-2">
 																				{hasProgress ? (
 																					<Button
+																						data-initial-focus={
+																							index === 0 ? "variant" : undefined
+																						}
 																						onClick={() => openWatch(episode)}
 																						type="button"
 																					>
@@ -533,6 +534,11 @@ function SeriesDetailsPageContent() {
 																					</Button>
 																				) : null}
 																				<Button
+																					data-initial-focus={
+																						index === 0 && !hasProgress
+																							? "variant"
+																							: undefined
+																					}
 																					onClick={() =>
 																						openWatch(episode, {
 																							startFromBeginning: true,
@@ -567,9 +573,5 @@ function SeriesDetailsPageContent() {
 }
 
 export default function SeriesDetailsPage() {
-	return (
-		<Suspense fallback={null}>
-			<SeriesDetailsPageContent />
-		</Suspense>
-	);
+	return <SeriesDetailsPageContent />;
 }

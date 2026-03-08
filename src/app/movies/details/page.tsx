@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useHashRouter } from "@/hooks/use-hash-router";
 import { Suspense, useMemo } from "react";
 import { toast } from "sonner";
 
@@ -41,8 +41,7 @@ function formatProgressLabel(seconds: number): string {
 }
 
 function MovieDetailsPageContent() {
-	const router = useRouter();
-	const searchParams = useSearchParams();
+	const { navigate, searchParams } = useHashRouter();
 
 	const mac = searchParams.get("mac") ?? "";
 	const title = searchParams.get("title") ?? "";
@@ -185,7 +184,7 @@ function MovieDetailsPageContent() {
 			fromPreview: `${window.location.pathname}${window.location.search}`,
 		});
 
-		router.push(`/watch?${params.toString()}`);
+		navigate(`/watch?${params.toString()}`);
 	};
 
 	const toggleMovieFavorite = async () => {
@@ -226,7 +225,11 @@ function MovieDetailsPageContent() {
 						<MobileSidebarToggle className="border-white/10 bg-black/40 text-white hover:bg-black/60 hover:text-white" />
 						<a
 							className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 w-10 text-white bg-black/40 backdrop-blur-md border border-white/10"
-							href={backHref}
+							onClick={(e) => {
+								e.preventDefault();
+								navigate(backHref);
+							}}
+							href={`#${backHref}`}
 						>
 							<span className="material-symbols-outlined">arrow_back</span>
 						</a>
@@ -441,9 +444,5 @@ function MovieDetailsPageContent() {
 }
 
 export default function MovieDetailsPage() {
-	return (
-		<Suspense fallback={null}>
-			<MovieDetailsPageContent />
-		</Suspense>
-	);
+	return <MovieDetailsPageContent />;
 }

@@ -7,7 +7,7 @@ import {
 	useQueryClient,
 	useQuery,
 } from "@tanstack/react-query";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useHashRouter } from "@/hooks/use-hash-router";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CatalogImage } from "@/components/iptv/catalog-image";
@@ -46,9 +46,7 @@ function countEpisodes(series: GroupedSeriesDto): number {
 }
 
 function SeriesPageContent() {
-	const router = useRouter();
-	const pathname = usePathname();
-	const searchParams = useSearchParams();
+	const { navigate, pathname, searchParams } = useHashRouter();
 	const initialSearch = searchParams.get("search") ?? "";
 	const initialGroupTitle = searchParams.get("groupTitle") ?? "";
 	const initialSort = (searchParams.get("sort") as SortMode) ?? "default";
@@ -115,12 +113,8 @@ function SeriesPageContent() {
 		const current = searchParams.toString();
 		const next = params.toString();
 
-		if (current !== next) {
-			router.replace(next ? `${pathname}?${next}` : pathname, {
-				scroll: false,
-			});
-		}
-	}, [pathname, router, search, searchParams, selectedGroupTitle, sortMode]);
+			navigate(next ? `${pathname}?${next}` : pathname);
+	}, [pathname, navigate, search, searchParams, selectedGroupTitle, sortMode]);
 
 	const { data: groupsResponse } = useQuery<{ data: string[] }>({
 		queryKey: ["series-group-list", mac, adult],
@@ -238,7 +232,7 @@ function SeriesPageContent() {
 			sort: sortMode,
 		});
 
-		router.push(`/series/details?${params.toString()}`);
+		navigate(`/series/details?${params.toString()}`);
 	};
 
 	const toggleSeriesFavorite = async (series: GroupedSeriesDto) => {
@@ -433,29 +427,13 @@ function SeriesPageContent() {
 												src={firstEpisode?.tvgLogo}
 											/>
 
-											<Button
-												aria-label={
-													isFavorite
-														? "Remover série dos favoritos"
-														: "Adicionar série aos favoritos"
-												}
-												className="absolute top-2 left-2 z-20 rounded-full border border-border/60 bg-background/80 p-0 text-muted-foreground backdrop-blur hover:bg-background/80 hover:text-rose-500"
-												onClick={(event) => {
-													event.stopPropagation();
-													void toggleSeriesFavorite(series);
-												}}
-												size="icon"
-												type="button"
-												variant="icon"
-											>
-												<span
-													className={`material-symbols-outlined text-lg ${
-														isFavorite ? "text-rose-500" : ""
-													}`}
-												>
-													{isFavorite ? "favorite" : "favorite_border"}
-												</span>
-											</Button>
+											{isFavorite ? (
+												<div className="absolute top-2 left-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 backdrop-blur">
+													<span className="material-symbols-outlined text-lg text-rose-500">
+														favorite
+													</span>
+												</div>
+											) : null}
 
 											<div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
 												<Badge
@@ -534,9 +512,5 @@ function SeriesPageContent() {
 }
 
 export default function SeriesPage() {
-	return (
-		<Suspense fallback={null}>
-			<SeriesPageContent />
-		</Suspense>
-	);
+	return <SeriesPageContent />;
 }

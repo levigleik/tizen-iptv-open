@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useHashRouter } from "@/hooks/use-hash-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { CatalogImage } from "@/components/iptv/catalog-image";
@@ -87,7 +87,7 @@ function formatProgressLabel(seconds: number): string {
 }
 
 export default function HistoryPage() {
-	const router = useRouter();
+	const { navigate } = useHashRouter();
 	const [mac, setMac] = useState("");
 
 	useEffect(() => {
@@ -157,14 +157,14 @@ export default function HistoryPage() {
 			entryId: String(item.entryId),
 		});
 		if (item.streamType === "LIVE") {
-			router.push(`/channels/details?${params.toString()}`);
+			navigate(`/channels/details?${params.toString()}`);
 			return;
 		}
 		if (item.streamType === "VOD") {
-			router.push(`/movies/details?${params.toString()}`);
+			navigate(`/movies/details?${params.toString()}`);
 			return;
 		}
-		router.push(`/series/details?${params.toString()}`);
+		navigate(`/series/details?${params.toString()}`);
 	};
 
 	const renderSection = (

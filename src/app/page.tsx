@@ -1,7 +1,10 @@
 "use client";
 
+import dynamic from "next/dynamic";
+import { type ComponentType } from "react";
+
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useHashRouter } from "@/hooks/use-hash-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { CatalogImage } from "@/components/iptv/catalog-image";
@@ -52,8 +55,8 @@ type RecentHomeItem = {
 	progressSeconds: number;
 };
 
-export default function HomePage() {
-	const router = useRouter();
+export function HomeView() {
+	const { navigate } = useHashRouter();
 	const [mac, setMac] = useState("");
 	const adult = useAppSettingsStore((state) => state.adult);
 
@@ -183,7 +186,7 @@ export default function HomePage() {
 			mac,
 			title: movie.title,
 		});
-		router.push(`/movies/details?${params.toString()}`);
+		navigate(`/movies/details?${params.toString()}`);
 	};
 
 	const openSeriesDetails = (series: GroupedSeriesDto) => {
@@ -192,7 +195,7 @@ export default function HomePage() {
 			mac,
 			title: series.title,
 		});
-		router.push(`/series/details?${params.toString()}`);
+		navigate(`/series/details?${params.toString()}`);
 	};
 
 	const openRecent = (recent: RecentHomeItem) => {
@@ -209,6 +212,20 @@ export default function HomePage() {
 			openSeriesDetails(matched.series);
 		}
 	};
+
+	useEffect(() => {
+		document.body.focus();
+	}, []);
+
+	useEffect(() => {
+		if (isRecentsSectionLoading) return;
+
+		const timerId = window.setTimeout(() => {
+			window.dispatchEvent(new Event("tv-focus-request"));
+		}, 100);
+
+		return () => window.clearTimeout(timerId);
+	}, [isRecentsSectionLoading]);
 
 	return (
 		<LayoutShell activeSidebarItem="home">
@@ -254,9 +271,12 @@ export default function HomePage() {
 								</Card>
 							) : (
 								<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-x-4 gap-y-8">
-									{recents.map((recent) => (
+									{recents.map((recent, index) => (
 										<Card
 											className="movie-card cursor-pointer group flex flex-col gap-2 outline-none border-none bg-transparent shadow-none"
+											data-initial-focus={
+												index === 0 ? "catalog-item" : undefined
+											}
 											key={`recent-${recent.entryId}`}
 											onClick={() => openRecent(recent)}
 											onKeyDown={(event) => {
@@ -350,7 +370,7 @@ export default function HomePage() {
 								</div>
 							) : (
 								<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-x-4 gap-y-8">
-									{movies.map((movie) => {
+									{movies.map((movie, index) => {
 										const firstVariant = movie.variants[0];
 										const hasLegendado = movie.variants.some(
 											(variant) => variant.isLegendado,
@@ -359,6 +379,11 @@ export default function HomePage() {
 										return (
 											<Card
 												className="movie-card cursor-pointer group flex flex-col gap-2 outline-none border-none bg-transparent shadow-none"
+												data-initial-focus={
+													recents.length === 0 && index === 0
+														? "catalog-item"
+														: undefined
+												}
 												key={`home-movie-${movie.title}`}
 												onClick={() => openMovieDetails(movie)}
 												onKeyDown={(event) => {
@@ -381,9 +406,9 @@ export default function HomePage() {
 													/>
 
 													{hasLegendado ? (
-														<div className="absolute top-2 left-2">
+														<div className="absolute top-2 right-2 z-20">
 															<Badge
-																className="bg-yellow-500/90 text-black uppercase tracking-wider"
+																className="bg-yellow-500/90 text-black uppercase tracking-wider shadow-sm"
 																variant="outline"
 															>
 																[L]
@@ -435,13 +460,20 @@ export default function HomePage() {
 								</div>
 							) : (
 								<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-x-4 gap-y-8">
-									{seriesList.map((series) => {
+									{seriesList.map((series, index) => {
 										const firstEpisode = series.seasons[0]?.episodes[0];
 										const totalEpisodes = countEpisodes(series);
 
 										return (
 											<Card
 												className="movie-card cursor-pointer group flex flex-col gap-2 outline-none border-none bg-transparent shadow-none"
+												data-initial-focus={
+													recents.length === 0 &&
+													movies.length === 0 &&
+													index === 0
+														? "catalog-item"
+														: undefined
+												}
 												key={`home-series-${series.title}`}
 												onClick={() => openSeriesDetails(series)}
 												onKeyDown={(event) => {
@@ -498,4 +530,41 @@ export default function HomePage() {
 			</main>
 		</LayoutShell>
 	);
+}
+
+// ============================================================================
+// SPA Router Switch
+// ============================================================================
+
+const ViewFavorites = dynamic(() => import("./favorites/page"), { ssr: false });
+const ViewHistory = dynamic(() => import("./history/page"), { ssr: false });
+const ViewSettings = dynamic(() => import("./settings/page"), { ssr: false });
+const ViewWatch = dynamic(() => import("./watch/page"), { ssr: false });
+const ViewPreview = dynamic(() => import("./preview/page"), { ssr: false });
+const ViewMovies = dynamic(() => import("./movies/page"), { ssr: false });
+const ViewMoviesDetails = dynamic(() => import("./movies/details/page"), { ssr: false });
+const ViewSeries = dynamic(() => import("./series/page"), { ssr: false });
+const ViewSeriesDetails = dynamic(() => import("./series/details/page"), { ssr: false });
+const ViewChannels = dynamic(() => import("./channels/page"), { ssr: false });
+const ViewChannelsDetails = dynamic(() => import("./channels/details/page"), { ssr: false });
+const ViewCatalog = dynamic(() => import("./catalog/page"), { ssr: false });
+
+export default function AppRouterSwitch() {
+	const { pathname } = useHashRouter();
+
+	let ViewComponent: ComponentType = HomeView;
+
+	if (pathname === "/favorites") ViewComponent = ViewFavorites;
+	else if (pathname === "/history") ViewComponent = ViewHistory;
+	else if (pathname === "/settings") ViewComponent = ViewSettings;
+	else if (pathname === "/watch") ViewComponent = ViewWatch;
+	else if (pathname === "/preview") ViewComponent = ViewPreview;
+	else if (pathname === "/movies") ViewComponent = ViewMovies;
+	else if (pathname === "/movies/details") ViewComponent = ViewMoviesDetails;
+	else if (pathname === "/series") ViewComponent = ViewSeries;
+	else if (pathname === "/series/details") ViewComponent = ViewSeriesDetails;
+	else if (pathname === "/channels") ViewComponent = ViewChannels;
+	else if (pathname === "/channels/details") ViewComponent = ViewChannelsDetails;
+
+	return <ViewComponent />;
 }

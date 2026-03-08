@@ -17,18 +17,18 @@ type GlobalSidebarProps = {
 };
 
 const NAV_ITEMS: SidebarItem[] = [
-	{ key: "home", icon: "home", label: "Início", href: "/" },
-	{ key: "live-tv", icon: "tv", label: "Canais", href: "/channels" },
-	{ key: "movies", icon: "movie", label: "Filmes", href: "/movies" },
-	{ key: "series", icon: "smart_display", label: "Séries", href: "/series" },
+	{ key: "home", icon: "home", label: "Início", href: "#/" },
+	{ key: "live-tv", icon: "tv", label: "Canais", href: "#/channels" },
+	{ key: "movies", icon: "movie", label: "Filmes", href: "#/movies" },
+	{ key: "series", icon: "smart_display", label: "Séries", href: "#/series" },
 	{
 		key: "favorites",
 		icon: "favorite",
 		label: "Favoritos",
-		href: "/favorites",
+		href: "#/favorites",
 		dividerBefore: true,
 	},
-	{ key: "history", icon: "history", label: "Histórico", href: "/history" },
+	{ key: "history", icon: "history", label: "Histórico", href: "#/history" },
 ];
 
 export function GlobalSidebar({
@@ -103,6 +103,7 @@ export function GlobalSidebar({
 							}
 							href={item.href}
 							data-sidebar-focus="true"
+							data-sidebar-active={item.key === activeItem ? "true" : undefined}
 							onClick={() => onRequestCloseMobile?.()}
 						>
 							<span className="material-symbols-outlined">{item.icon}</span>
@@ -123,8 +124,9 @@ export function GlobalSidebar({
 							? `group relative flex items-center ${itemLayout} px-3 py-3 rounded-md bg-primary text-primary-foreground shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring`
 							: `group relative flex items-center ${itemLayout} px-3 py-3 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors focus-visible:ring-2 focus-visible:ring-ring`
 					}
-					href="/settings"
+					href="#/settings"
 					data-sidebar-focus="true"
+					data-sidebar-active={activeItem === "settings" ? "true" : undefined}
 					onClick={() => onRequestCloseMobile?.()}
 				>
 					<span className="material-symbols-outlined">settings</span>

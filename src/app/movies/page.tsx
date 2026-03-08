@@ -7,7 +7,7 @@ import {
 	useQueryClient,
 	useQuery,
 } from "@tanstack/react-query";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useHashRouter } from "@/hooks/use-hash-router";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CatalogImage } from "@/components/iptv/catalog-image";
@@ -46,12 +46,11 @@ function badgeClass(badge: string) {
 }
 
 function MoviesPageContent() {
-	const router = useRouter();
-	const pathname = usePathname();
-	const searchParams = useSearchParams();
+	const { navigate, searchParams, pathname } = useHashRouter();
 	const initialSearch = searchParams.get("search") ?? "";
 	const initialGroupTitle = searchParams.get("groupTitle") ?? "";
 	const initialSort = (searchParams.get("sort") as SortMode) ?? "default";
+
 	const [mac, setMac] = useState("");
 	const [selectedGroupTitle, setSelectedGroupTitle] =
 		useState(initialGroupTitle);
@@ -116,11 +115,9 @@ function MoviesPageContent() {
 		const next = params.toString();
 
 		if (current !== next) {
-			router.replace(next ? `${pathname}?${next}` : pathname, {
-				scroll: false,
-			});
+			navigate(next ? `${pathname}?${next}` : pathname);
 		}
-	}, [pathname, router, search, searchParams, selectedGroupTitle, sortMode]);
+	}, [pathname, navigate, search, searchParams, selectedGroupTitle, sortMode]);
 
 	const { data: groupsResponse } = useQuery<{ data: string[] }>({
 		queryKey: ["movie-group-list", mac, adult],
@@ -240,7 +237,7 @@ function MoviesPageContent() {
 			sort: sortMode,
 		});
 
-		router.push(`/movies/details?${params.toString()}`);
+		navigate(`/movies/details?${params.toString()}`);
 	};
 
 	const toggleMovieFavorite = async (movie: GroupedMovieDto) => {
@@ -439,31 +436,23 @@ function MoviesPageContent() {
 												src={firstVariant?.tvgLogo}
 											/>
 
-											<Button
-												aria-label={
-													isFavorite
-														? "Remover dos favoritos"
-														: "Adicionar aos favoritos"
-												}
-												className="absolute top-2 left-2 z-20 rounded-full border border-white/20 bg-black/50 p-0 text-white backdrop-blur hover:bg-black/50 hover:text-rose-300"
-												onClick={(event) => {
-													event.stopPropagation();
-													void toggleMovieFavorite(movie);
-												}}
-												size="icon"
-												type="button"
-												variant="icon"
-											>
-												<span
-													className={`material-symbols-outlined text-lg ${
-														isFavorite ? "text-rose-300" : ""
-													}`}
-												>
-													{isFavorite ? "favorite" : "favorite_border"}
-												</span>
-											</Button>
+											{isFavorite ? (
+												<div className="absolute top-2 left-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 backdrop-blur">
+													<span className="material-symbols-outlined text-lg text-rose-500">
+														favorite
+													</span>
+												</div>
+											) : null}
 
-											<div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+											<div className="absolute top-2 right-2 flex flex-col gap-1 items-end z-20">
+												{hasLegendado ? (
+													<Badge
+														className="bg-yellow-500/90 text-black uppercase tracking-wider shadow-sm"
+														variant="outline"
+													>
+														[L]
+													</Badge>
+												) : null}
 												{tags.map((badge) => (
 													<Badge
 														className={badgeClass(badge)}
@@ -486,16 +475,7 @@ function MoviesPageContent() {
 												</div>
 											) : null}
 
-											{hasLegendado ? (
-												<div className="absolute top-2 left-2">
-													<Badge
-														className="bg-yellow-500/90 text-black uppercase tracking-wider"
-														variant="outline"
-													>
-														[L]
-													</Badge>
-												</div>
-											) : null}
+
 
 											<div className="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200 movie-poster-overlay flex items-center justify-center">
 												<div className="h-12 w-12 rounded-full bg-primary/90 p-0 shadow-lg flex items-center justify-center">

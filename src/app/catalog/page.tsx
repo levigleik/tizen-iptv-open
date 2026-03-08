@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useHashRouter } from "@/hooks/use-hash-router";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ContentRail } from "@/components/iptv/content-rail";
@@ -112,9 +112,7 @@ function getCategoryItems(
 }
 
 function CatalogContent() {
-	const router = useRouter();
-	const pathname = usePathname();
-	const searchParams = useSearchParams();
+	const { navigate, pathname, searchParams } = useHashRouter();
 
 	const queryMac = searchParams.get("mac") ?? "";
 	const queryCategory = searchParams.get("category");
@@ -254,7 +252,7 @@ function CatalogContent() {
 				? `${pathname}${window.location.search}`
 				: "";
 		if (nextUrl === currentUrl) return;
-		router.replace(nextUrl, { scroll: false });
+		navigate(nextUrl);
 	}, [
 		category,
 		focusedContentIndex,
@@ -262,10 +260,6 @@ function CatalogContent() {
 		page,
 		pathname,
 		perPage,
-		queryMac,
-		router,
-		search,
-		searchInput,
 		selectedGroupTitle,
 	]);
 
@@ -321,18 +315,13 @@ function CatalogContent() {
 				from,
 			});
 
-			router.push(`/preview?${params.toString()}`);
+			navigate(`/preview?${params.toString()}`);
 		},
 		[
 			category,
 			focusedContentIndex,
 			page,
 			pathname,
-			perPage,
-			queryMac,
-			router,
-			search,
-			searchInput,
 			selectedGroupTitle,
 		],
 	);
@@ -353,7 +342,7 @@ function CatalogContent() {
 			}
 
 			if (action === "back") {
-				router.push("/");
+				navigate("/");
 				return;
 			}
 
@@ -390,7 +379,7 @@ function CatalogContent() {
 							</CardDescription>
 						</div>
 						<div className="flex gap-2">
-							<Button variant="outline" onClick={() => router.push("/")}>
+							<Button variant="outline" onClick={() => navigate("/")}>
 								Voltar
 							</Button>
 							<Button variant="secondary" onClick={() => void refetch()}>
@@ -523,17 +512,5 @@ function CatalogContent() {
 }
 
 export default function CatalogPage() {
-	return (
-		<Suspense
-			fallback={
-				<main className="mx-auto max-w-6xl p-6">
-					<Card>
-						<CardContent className="py-6">Carregando catálogo...</CardContent>
-					</Card>
-				</main>
-			}
-		>
-			<CatalogContent />
-		</Suspense>
-	);
+	return <CatalogContent />;
 }
